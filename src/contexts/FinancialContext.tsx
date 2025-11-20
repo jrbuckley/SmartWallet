@@ -1,12 +1,13 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import type { Expense, Income, Investment, User, FinancialSummary } from '../types';
+import type { Debt, Expense, Income, Investment, User, FinancialSummary } from '../types';
 import { supabase } from '../lib/supabase';
 
 interface FinancialContextType {
   user: User | null;
   expenses: Expense[];
   income: Income[];
+  debts: Debt[];
   investments: Investment[];
   isLoading: boolean;
   addExpense: (expense: Omit<Expense, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
@@ -15,11 +16,14 @@ interface FinancialContextType {
   addIncome: (income: Omit<Income, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateIncome: (id: string, updates: Partial<Income>) => Promise<void>;
   deleteIncome: (id: string) => Promise<void>;
+  addDebt: (debt: Omit<Debt, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateDebt: (id: string, updates: Partial<Debt>) => Promise<void>;
+  deleteDebt: (id: string) => Promise<void>;
   addInvestment: (investment: Omit<Investment, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateInvestment: (id: string, updates: Partial<Investment>) => Promise<void>;
   deleteInvestment: (id: string) => Promise<void>;
   getFinancialSummary: () => FinancialSummary;
-  setDataFromFile: (data: { user: User | null; expenses: Expense[]; income: Income[]; investments: Investment[] }) => Promise<void>;
+  setDataFromFile: (data: { user: User | null; expenses: Expense[]; income: Income[]; debts: Debt[]; investments: Investment[] }) => Promise<void>;
 }
 
 const FinancialContext = createContext<FinancialContextType | undefined>(undefined);
@@ -97,6 +101,40 @@ function incomeFromDb(dbIncome: any): Income {
   };
 }
 
+function debtToDb(debt: Debt) {
+  return {
+    id: debt.id,
+    user_id: debt.userId,
+    type: debt.type,
+    name: debt.name,
+    principal_amount: debt.principalAmount,
+    current_balance: debt.currentBalance,
+    interest_rate: debt.interestRate,
+    minimum_payment: debt.minimumPayment,
+    start_date: debt.startDate.toISOString(),
+    notes: debt.notes || null,
+    created_at: debt.createdAt.toISOString(),
+    updated_at: debt.updatedAt.toISOString(),
+  };
+}
+
+function debtFromDb(dbDebt: any): Debt {
+  return {
+    id: dbDebt.id,
+    userId: dbDebt.user_id,
+    type: dbDebt.type,
+    name: dbDebt.name,
+    principalAmount: dbDebt.principal_amount,
+    currentBalance: dbDebt.current_balance,
+    interestRate: dbDebt.interest_rate,
+    minimumPayment: dbDebt.minimum_payment,
+    startDate: new Date(dbDebt.start_date),
+    notes: dbDebt.notes || undefined,
+    createdAt: new Date(dbDebt.created_at),
+    updatedAt: new Date(dbDebt.updated_at),
+  };
+}
+
 function investmentToDb(investment: Investment) {
   return {
     id: investment.id,
@@ -135,6 +173,7 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [income, setIncome] = useState<Income[]>([]);
+  const [debts, setDebts] = useState<Debt[]>([]);
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -214,6 +253,19 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
         console.error('Error loading income:', incomeError);
       } else {
         setIncome(incomeData?.map(incomeFromDb) || []);
+      }
+
+      // Load debts
+      const { data: debtsData, error: debtsError } = await supabase
+        .from('debts')
+        .select('*')
+        .eq('user_id', DEFAULT_USER_ID)
+        .order('created_at', { ascending: false });
+
+      if (debtsError) {
+        console.error('Error loading debts:', debtsError);
+      } else {
+        setDebts(debtsData?.map(debtFromDb) || []);
       }
 
       // Load investments
@@ -399,6 +451,88 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
     setIncome(prev => prev.filter(i => i.id !== id));
   };
 
+  const addDebt = async (debtData: Omit<Debt, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+    if (!user) return;
+
+    const now = new Date();
+    const newDebt: Debt = {
+      ...debtData,
+      id: crypto.randomUUID(),
+      userId: user.id,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const dbDebt = debtToDb(newDebt);
+    const { data, error } = await (supabase
+      .from('debts') as any)
+      .insert(dbDebt)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding debt:', error);
+      throw error;
+    }
+
+    if (data) {
+      setDebts(prev => [debtFromDb(data), ...prev]);
+    }
+  };
+
+  const updateDebt = async (id: string, updates: Partial<Debt>) => {
+    const debt = debts.find(d => d.id === id);
+    if (!debt) return;
+
+    const updatedDebt = {
+      ...debt,
+      ...updates,
+      updatedAt: new Date(),
+    };
+
+    const dbDebt = debtToDb(updatedDebt);
+    const updateData: any = {
+      type: dbDebt.type,
+      name: dbDebt.name,
+      principal_amount: dbDebt.principal_amount,
+      current_balance: dbDebt.current_balance,
+      interest_rate: dbDebt.interest_rate,
+      minimum_payment: dbDebt.minimum_payment,
+      start_date: dbDebt.start_date,
+      notes: dbDebt.notes,
+      updated_at: dbDebt.updated_at,
+    };
+    const { data, error } = await (supabase
+      .from('debts') as any)
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating debt:', error);
+      throw error;
+    }
+
+    if (data) {
+      setDebts(prev => prev.map(d => d.id === id ? debtFromDb(data) : d));
+    }
+  };
+
+  const deleteDebt = async (id: string) => {
+    const { error } = await supabase
+      .from('debts')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting debt:', error);
+      throw error;
+    }
+
+    setDebts(prev => prev.filter(d => d.id !== id));
+  };
+
   const addInvestment = async (investmentData: Omit<Investment, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
     if (!user) return;
 
@@ -481,7 +615,7 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
     setInvestments(prev => prev.filter(i => i.id !== id));
   };
 
-  const setDataFromFile = async (data: { user: User | null; expenses: Expense[]; income: Income[]; investments: Investment[] }) => {
+  const setDataFromFile = async (data: { user: User | null; expenses: Expense[]; income: Income[]; debts: Debt[]; investments: Investment[] }) => {
     if (!data.user) return;
 
     try {
@@ -502,9 +636,10 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
 
       setUser(data.user);
 
-      // Delete all existing expenses, income, and investments for this user
+      // Delete all existing expenses, income, debts, and investments for this user
       await supabase.from('expenses').delete().eq('user_id', data.user.id);
       await supabase.from('income').delete().eq('user_id', data.user.id);
+      await supabase.from('debts').delete().eq('user_id', data.user.id);
       await supabase.from('investments').delete().eq('user_id', data.user.id);
 
       // Insert new expenses
@@ -530,6 +665,19 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
         if (incomeError) {
           console.error('Error importing income:', incomeError);
           throw incomeError;
+        }
+      }
+
+      // Insert new debts
+      if (data.debts.length > 0) {
+        const dbDebts = data.debts.map(debtToDb);
+        const { error: debtsError } = await supabase
+          .from('debts')
+          .insert(dbDebts as any);
+
+        if (debtsError) {
+          console.error('Error importing debts:', debtsError);
+          throw debtsError;
         }
       }
 
@@ -577,6 +725,10 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
     // Calculate net cash flow
     const netCashFlow = monthlyRecurringIncome - monthlyRecurringExpenses;
 
+    // Calculate total debt
+    const totalDebt = debts.reduce((sum, d) => sum + d.currentBalance, 0);
+    const totalMinimumPayments = debts.reduce((sum, d) => sum + d.minimumPayment, 0);
+
     // Get upcoming expenses (next 30 days)
     const thirtyDaysFromNow = new Date(now);
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
@@ -608,6 +760,8 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
       monthlyRecurringIncome,
       monthlyRecurringExpenses,
       netCashFlow,
+      totalDebt,
+      totalMinimumPayments,
       totalInvestments,
       totalInvestmentValue,
       upcomingExpenses,
@@ -622,6 +776,7 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
         user,
         expenses,
         income,
+        debts,
         investments,
         isLoading,
         addExpense,
@@ -630,6 +785,9 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
         addIncome,
         updateIncome,
         deleteIncome,
+        addDebt,
+        updateDebt,
+        deleteDebt,
         addInvestment,
         updateInvestment,
         deleteInvestment,

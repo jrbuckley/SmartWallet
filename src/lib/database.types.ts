@@ -100,6 +100,50 @@ export interface Database {
           updated_at?: string
         }
       }
+      debts: {
+        Row: {
+          id: string
+          user_id: string
+          type: 'personal_loan' | 'car_loan' | 'student_loan' | 'credit_card' | 'mortgage' | 'other'
+          name: string
+          principal_amount: number
+          current_balance: number
+          interest_rate: number
+          minimum_payment: number
+          start_date: string
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: 'personal_loan' | 'car_loan' | 'student_loan' | 'credit_card' | 'mortgage' | 'other'
+          name: string
+          principal_amount: number
+          current_balance: number
+          interest_rate: number
+          minimum_payment: number
+          start_date: string
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: 'personal_loan' | 'car_loan' | 'student_loan' | 'credit_card' | 'mortgage' | 'other'
+          name?: string
+          principal_amount?: number
+          current_balance?: number
+          interest_rate?: number
+          minimum_payment?: number
+          start_date?: string
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       investments: {
         Row: {
           id: string

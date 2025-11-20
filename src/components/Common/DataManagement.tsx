@@ -4,7 +4,7 @@ import { exportDataAsJSON, importDataFromJSON } from '../../utils/fileStorage';
 import './DataManagement.css';
 
 export default function DataManagement() {
-  const { user, expenses, income, investments, setDataFromFile } = useFinancial();
+  const { user, expenses, income, debts, investments, setDataFromFile } = useFinancial();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -19,6 +19,7 @@ export default function DataManagement() {
         user,
         expenses,
         income,
+        debts,
         investments,
       });
       const blob = new Blob([json], { type: 'application/json' });

@@ -78,6 +78,22 @@ CREATE TABLE IF NOT EXISTS income (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Create debts table
+CREATE TABLE IF NOT EXISTS debts (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('personal_loan', 'car_loan', 'student_loan', 'credit_card', 'mortgage', 'other')),
+  name TEXT NOT NULL,
+  principal_amount DECIMAL(10, 2) NOT NULL,
+  current_balance DECIMAL(10, 2) NOT NULL,
+  interest_rate DECIMAL(5, 2) NOT NULL,
+  minimum_payment DECIMAL(10, 2) NOT NULL,
+  start_date TIMESTAMPTZ NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Create investments table
 CREATE TABLE IF NOT EXISTS investments (
   id TEXT PRIMARY KEY,
@@ -99,12 +115,15 @@ CREATE INDEX IF NOT EXISTS idx_expenses_user_id ON expenses(user_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_due_date ON expenses(due_date);
 CREATE INDEX IF NOT EXISTS idx_income_user_id ON income(user_id);
 CREATE INDEX IF NOT EXISTS idx_income_date ON income(date);
+CREATE INDEX IF NOT EXISTS idx_debts_user_id ON debts(user_id);
+CREATE INDEX IF NOT EXISTS idx_debts_interest_rate ON debts(interest_rate);
 CREATE INDEX IF NOT EXISTS idx_investments_user_id ON investments(user_id);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE income ENABLE ROW LEVEL SECURITY;
+ALTER TABLE debts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE investments ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for single-user mode
@@ -116,6 +135,9 @@ CREATE POLICY "Allow all for default user expenses" ON expenses
   FOR ALL USING (user_id = 'user-1');
 
 CREATE POLICY "Allow all for default user income" ON income
+  FOR ALL USING (user_id = 'user-1');
+
+CREATE POLICY "Allow all for default user debts" ON debts
   FOR ALL USING (user_id = 'user-1');
 
 CREATE POLICY "Allow all for default user investments" ON investments
@@ -130,7 +152,7 @@ CREATE POLICY "Allow all for default user investments" ON investments
    ```
 
 2. Open the app in your browser
-3. Try adding an expense, income entry, or investment
+3. Try adding an expense, income entry, debt, or investment
 4. Check your Supabase dashboard → Table Editor to see if data appears
 
 ## Troubleshooting

@@ -1,12 +1,13 @@
 // File storage utilities for exporting/importing data as JSON backups
 // Used for creating backups of Supabase data
 
-import type { Expense, Income, Investment, User } from '../types';
+import type { Debt, Expense, Income, Investment, User } from '../types';
 
 export interface FinancialData {
   user: User | null;
   expenses: Expense[];
   income: Income[];
+  debts: Debt[];
   investments: Investment[];
 }
 

@@ -41,6 +41,35 @@ export interface Income {
   updatedAt: Date;
 }
 
+// Debt types
+export type DebtType = 'personal_loan' | 'car_loan' | 'student_loan' | 'credit_card' | 'mortgage' | 'other';
+
+export interface Debt {
+  id: string;
+  userId: string; // For future multi-user support
+  type: DebtType;
+  name: string;
+  principalAmount: number; // Original loan amount
+  currentBalance: number; // Current remaining balance
+  interestRate: number; // Annual interest rate (APR) as percentage
+  minimumPayment: number; // Minimum monthly payment
+  startDate: Date; // Loan start/origination date
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Payoff strategy types
+export interface PayoffStrategy {
+  name: string;
+  description: string;
+  order: string[]; // Debt IDs in recommended payoff order
+  totalInterest: number;
+  totalPayments: number;
+  monthsToPayoff: number;
+  monthlyPayment: number;
+}
+
 // Investment types
 export interface Investment {
   id: string;
@@ -75,6 +104,8 @@ export interface FinancialSummary {
   monthlyRecurringIncome: number;
   monthlyRecurringExpenses: number;
   netCashFlow: number;
+  totalDebt: number;
+  totalMinimumPayments: number;
   totalInvestments: number;
   totalInvestmentValue: number;
   upcomingExpenses: Expense[];

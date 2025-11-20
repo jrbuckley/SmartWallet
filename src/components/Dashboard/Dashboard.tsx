@@ -38,6 +38,14 @@ export default function Dashboard() {
           <h3>Total Unpaid Expenses</h3>
           <p className="summary-value expense">${summary.totalExpenses.toFixed(2)}</p>
         </div>
+        <div className="summary-card">
+          <h3>Total Debt</h3>
+          <p className="summary-value expense">${summary.totalDebt.toFixed(2)}</p>
+        </div>
+        <div className="summary-card">
+          <h3>Total Minimum Payments</h3>
+          <p className="summary-value expense">${summary.totalMinimumPayments.toFixed(2)}/month</p>
+        </div>
       </div>
 
       <DashboardCharts />

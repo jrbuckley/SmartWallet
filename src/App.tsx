@@ -4,6 +4,7 @@ import Navigation from './components/Common/Navigation';
 import Dashboard from './components/Dashboard/Dashboard';
 import ExpenseList from './components/Expenses/ExpenseList';
 import IncomeList from './components/Income/IncomeList';
+import DebtList from './components/Debt/DebtList';
 import InvestmentList from './components/Investments/InvestmentList';
 import SavingsOpportunities from './components/Savings/SavingsOpportunities';
 import DataManagement from './components/Common/DataManagement';
@@ -20,6 +21,7 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/expenses" element={<ExpenseList />} />
               <Route path="/income" element={<IncomeList />} />
+              <Route path="/debts" element={<DebtList />} />
               <Route path="/investments" element={<InvestmentList />} />
               <Route path="/savings" element={<SavingsOpportunities />} />
               <Route path="/settings" element={<DataManagement />} />

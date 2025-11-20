@@ -31,6 +31,12 @@ export default function Navigation() {
           Income
         </Link>
         <Link
+          to="/debts"
+          className={`nav-link ${isActive('/debts') ? 'active' : ''}`}
+        >
+          Debts
+        </Link>
+        <Link
           to="/investments"
           className={`nav-link ${isActive('/investments') ? 'active' : ''}`}
         >
