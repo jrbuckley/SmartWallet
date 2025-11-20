@@ -7,9 +7,10 @@ interface ExpenseItemProps {
   onEdit: (expense: Expense) => void;
   onDelete: (id: string) => void;
   onTogglePaid: (expense: Expense) => void;
+  isDeleting?: boolean;
 }
 
-export default function ExpenseItem({ expense, onEdit, onDelete, onTogglePaid }: ExpenseItemProps) {
+export default function ExpenseItem({ expense, onEdit, onDelete, onTogglePaid, isDeleting = false }: ExpenseItemProps) {
   const getCategoryLabel = (category: Expense['category']) => {
     const labels = {
       bill: 'Bill',
@@ -71,8 +72,8 @@ export default function ExpenseItem({ expense, onEdit, onDelete, onTogglePaid }:
           <button className="btn-edit" onClick={() => onEdit(expense)}>
             Edit
           </button>
-          <button className="btn-delete" onClick={() => onDelete(expense.id)}>
-            Delete
+          <button className="btn-delete" onClick={() => onDelete(expense.id)} disabled={isDeleting}>
+            {isDeleting ? 'Deleting...' : 'Delete'}
           </button>
         </div>
       </div>

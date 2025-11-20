@@ -1,155 +1,411 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { Expense, Investment, User, FinancialSummary } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface FinancialContextType {
   user: User | null;
   expenses: Expense[];
   investments: Investment[];
-  addExpense: (expense: Omit<Expense, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => void;
-  updateExpense: (id: string, updates: Partial<Expense>) => void;
-  deleteExpense: (id: string) => void;
-  addInvestment: (investment: Omit<Investment, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => void;
-  updateInvestment: (id: string, updates: Partial<Investment>) => void;
-  deleteInvestment: (id: string) => void;
+  isLoading: boolean;
+  addExpense: (expense: Omit<Expense, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateExpense: (id: string, updates: Partial<Expense>) => Promise<void>;
+  deleteExpense: (id: string) => Promise<void>;
+  addInvestment: (investment: Omit<Investment, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateInvestment: (id: string, updates: Partial<Investment>) => Promise<void>;
+  deleteInvestment: (id: string) => Promise<void>;
   getFinancialSummary: () => FinancialSummary;
-  setDataFromFile: (data: { user: User | null; expenses: Expense[]; investments: Investment[] }) => void;
+  setDataFromFile: (data: { user: User | null; expenses: Expense[]; investments: Investment[] }) => Promise<void>;
 }
 
 const FinancialContext = createContext<FinancialContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'smartwallet_data';
+// Default user ID for single-user mode
+// In the future, this can be replaced with authenticated user ID
+const DEFAULT_USER_ID = 'user-1';
+
+// Helper functions to convert between app types and database types
+function expenseToDb(expense: Expense) {
+  return {
+    id: expense.id,
+    user_id: expense.userId,
+    category: expense.category,
+    name: expense.name,
+    amount: expense.amount,
+    due_date: expense.dueDate.toISOString(),
+    is_recurring: expense.isRecurring,
+    recurring_frequency: expense.recurringFrequency || null,
+    is_paid: expense.isPaid,
+    paid_date: expense.paidDate?.toISOString() || null,
+    notes: expense.notes || null,
+    created_at: expense.createdAt.toISOString(),
+    updated_at: expense.updatedAt.toISOString(),
+  };
+}
+
+function expenseFromDb(dbExpense: any): Expense {
+  return {
+    id: dbExpense.id,
+    userId: dbExpense.user_id,
+    category: dbExpense.category,
+    name: dbExpense.name,
+    amount: dbExpense.amount,
+    dueDate: new Date(dbExpense.due_date),
+    isRecurring: dbExpense.is_recurring,
+    recurringFrequency: dbExpense.recurring_frequency || undefined,
+    isPaid: dbExpense.is_paid,
+    paidDate: dbExpense.paid_date ? new Date(dbExpense.paid_date) : undefined,
+    notes: dbExpense.notes || undefined,
+    createdAt: new Date(dbExpense.created_at),
+    updatedAt: new Date(dbExpense.updated_at),
+  };
+}
+
+function investmentToDb(investment: Investment) {
+  return {
+    id: investment.id,
+    user_id: investment.userId,
+    name: investment.name,
+    type: investment.type,
+    symbol: investment.symbol || null,
+    quantity: investment.quantity,
+    purchase_price: investment.purchasePrice,
+    current_price: investment.currentPrice,
+    purchase_date: investment.purchaseDate.toISOString(),
+    notes: investment.notes || null,
+    created_at: investment.createdAt.toISOString(),
+    updated_at: investment.updatedAt.toISOString(),
+  };
+}
+
+function investmentFromDb(dbInvestment: any): Investment {
+  return {
+    id: dbInvestment.id,
+    userId: dbInvestment.user_id,
+    name: dbInvestment.name,
+    type: dbInvestment.type,
+    symbol: dbInvestment.symbol || undefined,
+    quantity: dbInvestment.quantity,
+    purchasePrice: dbInvestment.purchase_price,
+    currentPrice: dbInvestment.current_price,
+    purchaseDate: new Date(dbInvestment.purchase_date),
+    notes: dbInvestment.notes || undefined,
+    createdAt: new Date(dbInvestment.created_at),
+    updatedAt: new Date(dbInvestment.updated_at),
+  };
+}
 
 export function FinancialProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [investments, setInvestments] = useState<Investment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load data from localStorage on mount
+  // Load data from Supabase on mount
   useEffect(() => {
-    const savedData = localStorage.getItem(STORAGE_KEY);
-    if (savedData) {
-      try {
-        const parsed = JSON.parse(savedData);
-        if (parsed.user) {
-          setUser(parsed.user);
-        }
-        if (parsed.expenses) {
-          setExpenses(parsed.expenses.map((e: any) => ({
-            ...e,
-            dueDate: new Date(e.dueDate),
-            paidDate: e.paidDate ? new Date(e.paidDate) : undefined,
-            createdAt: new Date(e.createdAt),
-            updatedAt: new Date(e.updatedAt),
-          })));
-        }
-        if (parsed.investments) {
-          setInvestments(parsed.investments.map((i: any) => ({
-            ...i,
-            purchaseDate: new Date(i.purchaseDate),
-            createdAt: new Date(i.createdAt),
-            updatedAt: new Date(i.updatedAt),
-          })));
-        }
-      } catch (error) {
-        console.error('Error loading saved data:', error);
-      }
-    } else {
-      // Initialize with default user
-      const defaultUser: User = {
-        id: 'user-1',
-        name: 'My Account',
-      };
-      setUser(defaultUser);
-    }
+    loadData();
   }, []);
 
-  // Save data to localStorage whenever it changes
-  useEffect(() => {
-    if (user) {
-      const dataToSave = {
-        user,
-        expenses,
-        investments,
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
-    }
-  }, [user, expenses, investments]);
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      // Load or create user
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', DEFAULT_USER_ID)
+        .single();
 
-  const addExpense = (expenseData: Omit<Expense, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+      if (userError && userError.code !== 'PGRST116') {
+        // PGRST116 is "not found" - we'll create the user
+        console.error('Error loading user:', userError);
+      }
+
+      if (!userData) {
+        // Create default user
+        const defaultUser = {
+          id: DEFAULT_USER_ID,
+          name: 'My Account',
+          email: null,
+        };
+        const { data: newUser, error: createError } = await supabase
+          .from('users')
+          .insert(defaultUser as any)
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Error creating user:', createError);
+        } else if (newUser) {
+          const user = newUser as any;
+          setUser({
+            id: user.id,
+            name: user.name,
+            email: user.email || undefined,
+          });
+        }
+      } else {
+        const user = userData as any;
+        setUser({
+          id: user.id,
+          name: user.name,
+          email: user.email || undefined,
+        });
+      }
+
+      // Load expenses
+      const { data: expensesData, error: expensesError } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', DEFAULT_USER_ID)
+        .order('created_at', { ascending: false });
+
+      if (expensesError) {
+        console.error('Error loading expenses:', expensesError);
+      } else {
+        setExpenses(expensesData?.map(expenseFromDb) || []);
+      }
+
+      // Load investments
+      const { data: investmentsData, error: investmentsError } = await supabase
+        .from('investments')
+        .select('*')
+        .eq('user_id', DEFAULT_USER_ID)
+        .order('created_at', { ascending: false });
+
+      if (investmentsError) {
+        console.error('Error loading investments:', investmentsError);
+      } else {
+        setInvestments(investmentsData?.map(investmentFromDb) || []);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addExpense = async (expenseData: Omit<Expense, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
     if (!user) return;
-    
+
+    const now = new Date();
     const newExpense: Expense = {
       ...expenseData,
-      id: `expense-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: crypto.randomUUID(),
       userId: user.id,
-      createdAt: new Date(),
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const dbExpense = expenseToDb(newExpense);
+    const { data, error } = await (supabase
+      .from('expenses') as any)
+      .insert(dbExpense)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding expense:', error);
+      throw error;
+    }
+
+    if (data) {
+      setExpenses(prev => [expenseFromDb(data), ...prev]);
+    }
+  };
+
+  const updateExpense = async (id: string, updates: Partial<Expense>) => {
+    const expense = expenses.find(e => e.id === id);
+    if (!expense) return;
+
+    const updatedExpense = {
+      ...expense,
+      ...updates,
       updatedAt: new Date(),
     };
-    setExpenses(prev => [...prev, newExpense]);
+
+    const dbExpense = expenseToDb(updatedExpense);
+    const updateData: any = {
+      category: dbExpense.category,
+      name: dbExpense.name,
+      amount: dbExpense.amount,
+      due_date: dbExpense.due_date,
+      is_recurring: dbExpense.is_recurring,
+      recurring_frequency: dbExpense.recurring_frequency,
+      is_paid: dbExpense.is_paid,
+      paid_date: dbExpense.paid_date,
+      notes: dbExpense.notes,
+      updated_at: dbExpense.updated_at,
+    };
+    const { data, error } = await (supabase
+      .from('expenses') as any)
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating expense:', error);
+      throw error;
+    }
+
+    if (data) {
+      setExpenses(prev => prev.map(e => e.id === id ? expenseFromDb(data) : e));
+    }
   };
 
-  const updateExpense = (id: string, updates: Partial<Expense>) => {
-    setExpenses(prev =>
-      prev.map(expense =>
-        expense.id === id
-          ? { ...expense, ...updates, updatedAt: new Date() }
-          : expense
-      )
-    );
+  const deleteExpense = async (id: string) => {
+    const { error } = await supabase
+      .from('expenses')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting expense:', error);
+      throw error;
+    }
+
+    setExpenses(prev => prev.filter(e => e.id !== id));
   };
 
-  const deleteExpense = (id: string) => {
-    setExpenses(prev => prev.filter(expense => expense.id !== id));
-  };
-
-  const addInvestment = (investmentData: Omit<Investment, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+  const addInvestment = async (investmentData: Omit<Investment, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
     if (!user) return;
-    
+
+    const now = new Date();
     const newInvestment: Investment = {
       ...investmentData,
-      id: `investment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: crypto.randomUUID(),
       userId: user.id,
-      createdAt: new Date(),
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const dbInvestment = investmentToDb(newInvestment);
+    const { data, error } = await (supabase
+      .from('investments') as any)
+      .insert(dbInvestment)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding investment:', error);
+      throw error;
+    }
+
+    if (data) {
+      setInvestments(prev => [investmentFromDb(data), ...prev]);
+    }
+  };
+
+  const updateInvestment = async (id: string, updates: Partial<Investment>) => {
+    const investment = investments.find(i => i.id === id);
+    if (!investment) return;
+
+    const updatedInvestment = {
+      ...investment,
+      ...updates,
       updatedAt: new Date(),
     };
-    setInvestments(prev => [...prev, newInvestment]);
+
+    const dbInvestment = investmentToDb(updatedInvestment);
+    const updateData: any = {
+      name: dbInvestment.name,
+      type: dbInvestment.type,
+      symbol: dbInvestment.symbol,
+      quantity: dbInvestment.quantity,
+      purchase_price: dbInvestment.purchase_price,
+      current_price: dbInvestment.current_price,
+      purchase_date: dbInvestment.purchase_date,
+      notes: dbInvestment.notes,
+      updated_at: dbInvestment.updated_at,
+    };
+    const { data, error } = await (supabase
+      .from('investments') as any)
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating investment:', error);
+      throw error;
+    }
+
+    if (data) {
+      setInvestments(prev => prev.map(i => i.id === id ? investmentFromDb(data) : i));
+    }
   };
 
-  const updateInvestment = (id: string, updates: Partial<Investment>) => {
-    setInvestments(prev =>
-      prev.map(investment =>
-        investment.id === id
-          ? { ...investment, ...updates, updatedAt: new Date() }
-          : investment
-      )
-    );
+  const deleteInvestment = async (id: string) => {
+    const { error } = await supabase
+      .from('investments')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting investment:', error);
+      throw error;
+    }
+
+    setInvestments(prev => prev.filter(i => i.id !== id));
   };
 
-  const deleteInvestment = (id: string) => {
-    setInvestments(prev => prev.filter(investment => investment.id !== id));
-  };
+  const setDataFromFile = async (data: { user: User | null; expenses: Expense[]; investments: Investment[] }) => {
+    if (!data.user) return;
 
-  const setDataFromFile = (data: { user: User | null; expenses: Expense[]; investments: Investment[] }) => {
-    if (data.user) {
+    try {
+      // Update or create user
+      const { error: userError } = await supabase
+        .from('users')
+        .upsert({
+          id: data.user.id,
+          name: data.user.name,
+          email: data.user.email || null,
+          updated_at: new Date().toISOString(),
+        } as any);
+
+      if (userError) {
+        console.error('Error updating user:', userError);
+        throw userError;
+      }
+
       setUser(data.user);
-    }
-    if (data.expenses) {
-      setExpenses(data.expenses.map((e: any) => ({
-        ...e,
-        dueDate: new Date(e.dueDate),
-        paidDate: e.paidDate ? new Date(e.paidDate) : undefined,
-        createdAt: new Date(e.createdAt),
-        updatedAt: new Date(e.updatedAt),
-      })));
-    }
-    if (data.investments) {
-      setInvestments(data.investments.map((i: any) => ({
-        ...i,
-        purchaseDate: new Date(i.purchaseDate),
-        createdAt: new Date(i.createdAt),
-        updatedAt: new Date(i.updatedAt),
-      })));
+
+      // Delete all existing expenses and investments for this user
+      await supabase.from('expenses').delete().eq('user_id', data.user.id);
+      await supabase.from('investments').delete().eq('user_id', data.user.id);
+
+      // Insert new expenses
+      if (data.expenses.length > 0) {
+        const dbExpenses = data.expenses.map(expenseToDb);
+        const { error: expensesError } = await supabase
+          .from('expenses')
+          .insert(dbExpenses as any);
+
+        if (expensesError) {
+          console.error('Error importing expenses:', expensesError);
+          throw expensesError;
+        }
+      }
+
+      // Insert new investments
+      if (data.investments.length > 0) {
+        const dbInvestments = data.investments.map(investmentToDb);
+        const { error: investmentsError } = await supabase
+          .from('investments')
+          .insert(dbInvestments as any);
+
+        if (investmentsError) {
+          console.error('Error importing investments:', investmentsError);
+          throw investmentsError;
+        }
+      }
+
+      // Reload data
+      await loadData();
+    } catch (error) {
+      console.error('Error importing data:', error);
+      throw error;
     }
   };
 
@@ -179,7 +435,7 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
       0
     );
 
-    // Generate savings opportunities (simplified for now)
+    // Generate savings opportunities
     const savingsOpportunities = generateSavingsOpportunities(expenses, investments);
 
     return {
@@ -198,6 +454,7 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
         user,
         expenses,
         investments,
+        isLoading,
         addExpense,
         updateExpense,
         deleteExpense,
@@ -240,7 +497,7 @@ function generateSavingsOpportunities(
       type: 'expense_reduction',
       title: `Review ${expense.name}`,
       description: `This recurring expense costs $${expense.amount.toFixed(2)} per ${expense.recurringFrequency}. Consider shopping around for better rates.`,
-      potentialSavings: expense.amount * 0.1, // Assume 10% potential savings
+      potentialSavings: expense.amount * 0.1,
       priority: expense.amount > 200 ? 'high' : 'medium',
       actionable: true,
     });
@@ -257,7 +514,7 @@ function generateSavingsOpportunities(
       type: 'debt_consolidation',
       title: 'Credit Card Debt',
       description: `You have $${creditCardDebt.toFixed(2)} in unpaid credit card debt. Consider consolidating or paying off high-interest debt first.`,
-      potentialSavings: creditCardDebt * 0.15, // Assume 15% interest savings
+      potentialSavings: creditCardDebt * 0.15,
       priority: 'high',
       actionable: true,
     });
@@ -281,7 +538,7 @@ function generateSavingsOpportunities(
         type: 'investment_optimization',
         title: 'Portfolio Diversification',
         description: 'Your portfolio may be too concentrated in one asset type. Consider diversifying to reduce risk.',
-        potentialSavings: 0, // Not a direct savings, but risk reduction
+        potentialSavings: 0,
         priority: 'medium',
         actionable: true,
       });
@@ -290,4 +547,3 @@ function generateSavingsOpportunities(
 
   return opportunities;
 }
-

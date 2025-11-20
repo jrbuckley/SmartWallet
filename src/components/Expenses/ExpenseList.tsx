@@ -6,11 +6,13 @@ import ExpenseItem from './ExpenseItem';
 import './ExpenseList.css';
 
 export default function ExpenseList() {
-  const { expenses, deleteExpense, updateExpense } = useFinancial();
+  const { expenses, deleteExpense, updateExpense, isLoading } = useFinancial();
   const [showForm, setShowForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [filterCategory, setFilterCategory] = useState<ExpenseCategory | 'all'>('all');
   const [filterPaid, setFilterPaid] = useState<'all' | 'paid' | 'unpaid'>('all');
+
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleEdit = (expense: Expense) => {
     setEditingExpense(expense);
@@ -22,11 +24,31 @@ export default function ExpenseList() {
     setEditingExpense(null);
   };
 
-  const handleTogglePaid = (expense: Expense) => {
-    updateExpense(expense.id, {
-      isPaid: !expense.isPaid,
-      paidDate: !expense.isPaid ? new Date() : undefined,
-    });
+  const handleTogglePaid = async (expense: Expense) => {
+    try {
+      await updateExpense(expense.id, {
+        isPaid: !expense.isPaid,
+        paidDate: !expense.isPaid ? new Date() : undefined,
+      });
+    } catch (error) {
+      console.error('Error updating expense:', error);
+      alert('Failed to update expense. Please try again.');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this expense?')) {
+      return;
+    }
+    setDeletingId(id);
+    try {
+      await deleteExpense(id);
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+      alert('Failed to delete expense. Please try again.');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const filteredExpenses = expenses.filter(expense => {
@@ -91,23 +113,30 @@ export default function ExpenseList() {
         />
       )}
 
-      <div className="expense-items">
-        {sortedExpenses.length === 0 ? (
-          <div className="empty-state">
-            <p>No expenses found. Add your first expense to get started!</p>
-          </div>
-        ) : (
-          sortedExpenses.map(expense => (
+      {isLoading ? (
+        <div className="empty-state">
+          <p>Loading expenses...</p>
+        </div>
+      ) : (
+        <div className="expense-items">
+          {sortedExpenses.length === 0 ? (
+            <div className="empty-state">
+              <p>No expenses found. Add your first expense to get started!</p>
+            </div>
+          ) : (
+            sortedExpenses.map(expense => (
             <ExpenseItem
               key={expense.id}
               expense={expense}
               onEdit={handleEdit}
-              onDelete={deleteExpense}
+              onDelete={handleDelete}
               onTogglePaid={handleTogglePaid}
+              isDeleting={deletingId === expense.id}
             />
-          ))
-        )}
-      </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

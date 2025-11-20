@@ -36,27 +36,37 @@ export default function InvestmentForm({ investment, onClose }: InvestmentFormPr
     }
   }, [investment]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
-    const investmentData = {
-      name: formData.name,
-      type: formData.type,
-      symbol: formData.symbol || undefined,
-      quantity: parseFloat(formData.quantity),
-      purchasePrice: parseFloat(formData.purchasePrice),
-      currentPrice: parseFloat(formData.currentPrice),
-      purchaseDate: new Date(formData.purchaseDate),
-      notes: formData.notes || undefined,
-    };
+    try {
+      const investmentData = {
+        name: formData.name,
+        type: formData.type,
+        symbol: formData.symbol || undefined,
+        quantity: parseFloat(formData.quantity),
+        purchasePrice: parseFloat(formData.purchasePrice),
+        currentPrice: parseFloat(formData.currentPrice),
+        purchaseDate: new Date(formData.purchaseDate),
+        notes: formData.notes || undefined,
+      };
 
-    if (investment) {
-      updateInvestment(investment.id, investmentData);
-    } else {
-      addInvestment(investmentData);
+      if (investment) {
+        await updateInvestment(investment.id, investmentData);
+      } else {
+        await addInvestment(investmentData);
+      }
+
+      onClose();
+    } catch (error) {
+      console.error('Error saving investment:', error);
+      alert('Failed to save investment. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    onClose();
   };
 
   return (
@@ -175,8 +185,8 @@ export default function InvestmentForm({ investment, onClose }: InvestmentFormPr
             <button type="button" className="btn-secondary" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn-primary">
-              {investment ? 'Update' : 'Add'} Investment
+            <button type="submit" className="btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : investment ? 'Update' : 'Add'} Investment
             </button>
           </div>
         </form>

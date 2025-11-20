@@ -6,10 +6,11 @@ interface InvestmentItemProps {
   investment: Investment;
   onEdit: (investment: Investment) => void;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, updates: Partial<Investment>) => void;
+  onUpdate: (id: string, updates: Partial<Investment>) => Promise<void>;
+  isDeleting?: boolean;
 }
 
-export default function InvestmentItem({ investment, onEdit, onDelete, onUpdate }: InvestmentItemProps) {
+export default function InvestmentItem({ investment, onEdit, onDelete, onUpdate, isDeleting = false }: InvestmentItemProps) {
   const getTypeLabel = (type: Investment['type']) => {
     const labels = {
       stock: 'Stock',
@@ -28,8 +29,13 @@ export default function InvestmentItem({ investment, onEdit, onDelete, onUpdate 
   const gainLoss = totalValue - totalCost;
   const gainLossPercentage = totalCost > 0 ? (gainLoss / totalCost) * 100 : 0;
 
-  const handlePriceUpdate = (newPrice: number) => {
-    onUpdate(investment.id, { currentPrice: newPrice });
+  const handlePriceUpdate = async (newPrice: number) => {
+    try {
+      await onUpdate(investment.id, { currentPrice: newPrice });
+    } catch (error) {
+      console.error('Error updating price:', error);
+      alert('Failed to update price. Please try again.');
+    }
   };
 
   return (
@@ -68,10 +74,10 @@ export default function InvestmentItem({ investment, onEdit, onDelete, onUpdate 
               step="0.01"
               placeholder="Update price"
               className="price-input"
-              onBlur={(e) => {
+              onBlur={async (e) => {
                 const newPrice = parseFloat(e.target.value);
                 if (!isNaN(newPrice) && newPrice > 0) {
-                  handlePriceUpdate(newPrice);
+                  await handlePriceUpdate(newPrice);
                   e.target.value = '';
                 }
               }}
@@ -80,8 +86,8 @@ export default function InvestmentItem({ investment, onEdit, onDelete, onUpdate 
           <button className="btn-edit" onClick={() => onEdit(investment)}>
             Edit
           </button>
-          <button className="btn-delete" onClick={() => onDelete(investment.id)}>
-            Delete
+          <button className="btn-delete" onClick={() => onDelete(investment.id)} disabled={isDeleting}>
+            {isDeleting ? 'Deleting...' : 'Delete'}
           </button>
         </div>
       </div>

@@ -34,27 +34,37 @@ export default function ExpenseForm({ expense, onClose }: ExpenseFormProps) {
     }
   }, [expense]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
-    const expenseData = {
-      name: formData.name,
-      category: formData.category,
-      amount: parseFloat(formData.amount),
-      dueDate: new Date(formData.dueDate),
-      isRecurring: formData.isRecurring,
-      recurringFrequency: formData.isRecurring ? formData.recurringFrequency : undefined,
-      notes: formData.notes || undefined,
-      isPaid: false,
-    };
+    try {
+      const expenseData = {
+        name: formData.name,
+        category: formData.category,
+        amount: parseFloat(formData.amount),
+        dueDate: new Date(formData.dueDate),
+        isRecurring: formData.isRecurring,
+        recurringFrequency: formData.isRecurring ? formData.recurringFrequency : undefined,
+        notes: formData.notes || undefined,
+        isPaid: false,
+      };
 
-    if (expense) {
-      updateExpense(expense.id, expenseData);
-    } else {
-      addExpense(expenseData);
+      if (expense) {
+        await updateExpense(expense.id, expenseData);
+      } else {
+        await addExpense(expenseData);
+      }
+
+      onClose();
+    } catch (error) {
+      console.error('Error saving expense:', error);
+      alert('Failed to save expense. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    onClose();
   };
 
   return (
@@ -157,8 +167,8 @@ export default function ExpenseForm({ expense, onClose }: ExpenseFormProps) {
             <button type="button" className="btn-secondary" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn-primary">
-              {expense ? 'Update' : 'Add'} Expense
+            <button type="submit" className="btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : expense ? 'Update' : 'Add'} Expense
             </button>
           </div>
         </form>

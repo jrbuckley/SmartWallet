@@ -6,9 +6,10 @@ import InvestmentItem from './InvestmentItem';
 import './InvestmentList.css';
 
 export default function InvestmentList() {
-  const { investments, deleteInvestment, updateInvestment } = useFinancial();
+  const { investments, deleteInvestment, updateInvestment, isLoading } = useFinancial();
   const [showForm, setShowForm] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleEdit = (investment: Investment) => {
     setEditingInvestment(investment);
@@ -18,6 +19,21 @@ export default function InvestmentList() {
   const handleFormClose = () => {
     setShowForm(false);
     setEditingInvestment(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this investment?')) {
+      return;
+    }
+    setDeletingId(id);
+    try {
+      await deleteInvestment(id);
+    } catch (error) {
+      console.error('Error deleting investment:', error);
+      alert('Failed to delete investment. Please try again.');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const totalValue = investments.reduce(
@@ -67,23 +83,30 @@ export default function InvestmentList() {
         />
       )}
 
-      <div className="investment-items">
-        {investments.length === 0 ? (
-          <div className="empty-state">
-            <p>No investments found. Add your first investment to get started!</p>
-          </div>
-        ) : (
-          investments.map(investment => (
-            <InvestmentItem
-              key={investment.id}
-              investment={investment}
-              onEdit={handleEdit}
-              onDelete={deleteInvestment}
-              onUpdate={updateInvestment}
-            />
-          ))
-        )}
-      </div>
+      {isLoading ? (
+        <div className="empty-state">
+          <p>Loading investments...</p>
+        </div>
+      ) : (
+        <div className="investment-items">
+          {investments.length === 0 ? (
+            <div className="empty-state">
+              <p>No investments found. Add your first investment to get started!</p>
+            </div>
+          ) : (
+            investments.map(investment => (
+              <InvestmentItem
+                key={investment.id}
+                investment={investment}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onUpdate={updateInvestment}
+                isDeleting={deletingId === investment.id}
+              />
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

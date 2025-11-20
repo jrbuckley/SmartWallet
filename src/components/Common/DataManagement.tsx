@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useFinancial } from '../../contexts/FinancialContext';
-import { saveDataToFile, loadDataFromFile, exportDataAsJSON, importDataFromJSON } from '../../utils/fileStorage';
+import { exportDataAsJSON, importDataFromJSON } from '../../utils/fileStorage';
 import './DataManagement.css';
 
 export default function DataManagement() {
@@ -11,49 +11,6 @@ export default function DataManagement() {
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 3000);
-  };
-
-  const handleSaveToFile = async () => {
-    setIsLoading(true);
-    try {
-      const success = await saveDataToFile({
-        user,
-        expenses,
-        investments,
-      });
-      if (success) {
-        showMessage('success', 'Data saved to file successfully!');
-      } else {
-        showMessage('error', 'Failed to save data. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error saving file:', error);
-      showMessage('error', 'An error occurred while saving the file.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleLoadFromFile = async () => {
-    if (!confirm('Loading data from a file will replace your current data. Are you sure?')) {
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const data = await loadDataFromFile();
-      if (data) {
-        setDataFromFile(data);
-        showMessage('success', 'Data loaded from file successfully!');
-      } else {
-        showMessage('error', 'Failed to load data or file was cancelled.');
-      }
-    } catch (error) {
-      console.error('Error loading file:', error);
-      showMessage('error', 'An error occurred while loading the file.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleExportJSON = () => {
@@ -79,24 +36,25 @@ export default function DataManagement() {
     }
   };
 
-  const handleImportJSON = () => {
-    if (!confirm('Importing data will replace your current data. Are you sure?')) {
+  const handleImportJSON = async () => {
+    if (!confirm('Importing data will replace your current data in Supabase. Are you sure?')) {
       return;
     }
 
+    setIsLoading(true);
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
-    input.onchange = (e) => {
+    input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
           try {
             const json = event.target?.result as string;
             const data = importDataFromJSON(json);
             if (data) {
-              setDataFromFile(data);
+              await setDataFromFile(data);
               showMessage('success', 'Data imported successfully!');
             } else {
               showMessage('error', 'Invalid JSON file format.');
@@ -104,9 +62,13 @@ export default function DataManagement() {
           } catch (error) {
             console.error('Error importing JSON:', error);
             showMessage('error', 'Failed to import data. Please check the file format.');
+          } finally {
+            setIsLoading(false);
           }
         };
         reader.readAsText(file);
+      } else {
+        setIsLoading(false);
       }
     };
     input.click();
@@ -116,7 +78,7 @@ export default function DataManagement() {
     <div className="data-management">
       <h2>Data Management</h2>
       <p className="description">
-        Manage your financial data. Save to files for long-term storage and backup.
+        Export and import your financial data as JSON backups. Your data is automatically saved to Supabase.
       </p>
 
       {message && (
@@ -127,34 +89,10 @@ export default function DataManagement() {
 
       <div className="data-actions">
         <div className="action-card">
-          <h3>💾 Save to File</h3>
-          <p>Save your data to a local file using the File System Access API (modern browsers) or download as JSON.</p>
+          <h3>📤 Export JSON</h3>
+          <p>Download your data as a JSON file for backup. Your data is automatically saved to Supabase, but this provides an additional backup.</p>
           <button
             className="btn-primary"
-            onClick={handleSaveToFile}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Saving...' : 'Save to File'}
-          </button>
-        </div>
-
-        <div className="action-card">
-          <h3>📂 Load from File</h3>
-          <p>Load your data from a previously saved file. This will replace your current data.</p>
-          <button
-            className="btn-secondary"
-            onClick={handleLoadFromFile}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Loading...' : 'Load from File'}
-          </button>
-        </div>
-
-        <div className="action-card">
-          <h3>📤 Export JSON</h3>
-          <p>Download your data as a JSON file for backup or manual storage.</p>
-          <button
-            className="btn-secondary"
             onClick={handleExportJSON}
             disabled={isLoading}
           >
@@ -164,13 +102,13 @@ export default function DataManagement() {
 
         <div className="action-card">
           <h3>📥 Import JSON</h3>
-          <p>Import data from a previously exported JSON file. This will replace your current data.</p>
+          <p>Import data from a previously exported JSON file. This will replace your current data in Supabase.</p>
           <button
             className="btn-secondary"
             onClick={handleImportJSON}
             disabled={isLoading}
           >
-            Import JSON
+            {isLoading ? 'Importing...' : 'Import JSON'}
           </button>
         </div>
       </div>
@@ -178,13 +116,12 @@ export default function DataManagement() {
       <div className="info-box">
         <h4>💡 Storage Information</h4>
         <ul>
-          <li><strong>Current Storage:</strong> Data is stored in browser localStorage for quick access</li>
-          <li><strong>File Storage:</strong> Use "Save to File" to save data to a local file that persists even if browser data is cleared</li>
+          <li><strong>Primary Storage:</strong> All data is automatically saved to your Supabase database</li>
+          <li><strong>Persistence:</strong> Your data persists across devices and browser sessions</li>
           <li><strong>Backup:</strong> Regularly export your data as JSON for additional backup</li>
-          <li><strong>File Location:</strong> When using File System Access API, you can choose where to save the file</li>
+          <li><strong>Import:</strong> Use Import JSON to restore from a backup or migrate data</li>
         </ul>
       </div>
     </div>
   );
 }
-
