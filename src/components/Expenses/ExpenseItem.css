@@ -1,0 +1,152 @@
+.expense-item {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.expense-item:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.expense-item.paid {
+  opacity: 0.7;
+  background-color: var(--bg-secondary);
+}
+
+.expense-item.overdue {
+  border-left: 4px solid var(--danger-color);
+}
+
+.expense-item-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.expense-item-info {
+  flex: 1;
+  min-width: 200px;
+}
+
+.expense-item-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.expense-item-header h4 {
+  font-size: 1.125rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.category-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.expense-item-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.amount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.due-date {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.overdue-badge {
+  background-color: var(--danger-color);
+  color: white;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.recurring-badge {
+  font-size: 0.875rem;
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.expense-notes {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+.expense-item-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.btn-toggle {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-toggle.unpaid {
+  background-color: var(--secondary-color);
+  color: white;
+}
+
+.btn-toggle.unpaid:hover {
+  background-color: #059669;
+}
+
+.btn-toggle.paid {
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.btn-toggle.paid:hover {
+  background-color: var(--border-color);
+}
+
+@media (max-width: 768px) {
+  .expense-item-main {
+    flex-direction: column;
+  }
+
+  .expense-item-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .expense-item-actions button {
+    flex: 1;
+  }
+}
+
