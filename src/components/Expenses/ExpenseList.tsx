@@ -3,6 +3,7 @@ import { useFinancial } from '../../contexts/FinancialContext';
 import type { Expense, ExpenseCategory } from '../../types';
 import ExpenseForm from './ExpenseForm';
 import ExpenseItem from './ExpenseItem';
+import ExpenseCharts from './ExpenseCharts';
 import './ExpenseList.css';
 
 export default function ExpenseList() {
@@ -112,6 +113,8 @@ export default function ExpenseList() {
           onClose={handleFormClose}
         />
       )}
+
+      {expenses.length > 0 && <ExpenseCharts expenses={expenses} />}
 
       {isLoading ? (
         <div className="empty-state">

@@ -63,6 +63,21 @@ CREATE TABLE IF NOT EXISTS expenses (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Create income table
+CREATE TABLE IF NOT EXISTS income (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  category TEXT NOT NULL CHECK (category IN ('salary', 'bonus', 'freelance', 'investment_returns', 'other')),
+  name TEXT NOT NULL,
+  amount DECIMAL(10, 2) NOT NULL,
+  date TIMESTAMPTZ NOT NULL,
+  is_recurring BOOLEAN DEFAULT FALSE,
+  recurring_frequency TEXT CHECK (recurring_frequency IN ('monthly', 'weekly', 'yearly')),
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Create investments table
 CREATE TABLE IF NOT EXISTS investments (
   id TEXT PRIMARY KEY,
@@ -82,11 +97,14 @@ CREATE TABLE IF NOT EXISTS investments (
 -- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_expenses_user_id ON expenses(user_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_due_date ON expenses(due_date);
+CREATE INDEX IF NOT EXISTS idx_income_user_id ON income(user_id);
+CREATE INDEX IF NOT EXISTS idx_income_date ON income(date);
 CREATE INDEX IF NOT EXISTS idx_investments_user_id ON investments(user_id);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE income ENABLE ROW LEVEL SECURITY;
 ALTER TABLE investments ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for single-user mode
@@ -95,6 +113,9 @@ CREATE POLICY "Allow all for default user" ON users
   FOR ALL USING (true);
 
 CREATE POLICY "Allow all for default user expenses" ON expenses
+  FOR ALL USING (user_id = 'user-1');
+
+CREATE POLICY "Allow all for default user income" ON income
   FOR ALL USING (user_id = 'user-1');
 
 CREATE POLICY "Allow all for default user investments" ON investments
@@ -109,7 +130,7 @@ CREATE POLICY "Allow all for default user investments" ON investments
    ```
 
 2. Open the app in your browser
-3. Try adding an expense or investment
+3. Try adding an expense, income entry, or investment
 4. Check your Supabase dashboard → Table Editor to see if data appears
 
 ## Troubleshooting

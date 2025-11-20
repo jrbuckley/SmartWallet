@@ -3,12 +3,14 @@ import { useFinancial } from '../../contexts/FinancialContext';
 import type { Investment } from '../../types';
 import InvestmentForm from './InvestmentForm';
 import InvestmentItem from './InvestmentItem';
+import InvestmentCharts from './InvestmentCharts';
 import './InvestmentList.css';
 
 export default function InvestmentList() {
   const { investments, deleteInvestment, updateInvestment, isLoading } = useFinancial();
   const [showForm, setShowForm] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
+  const [filterType, setFilterType] = useState<Investment['type'] | 'all'>('all');
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleEdit = (investment: Investment) => {
@@ -36,11 +38,18 @@ export default function InvestmentList() {
     }
   };
 
-  const totalValue = investments.reduce(
+  const filteredInvestments = investments.filter(investment => {
+    if (filterType !== 'all' && investment.type !== filterType) {
+      return false;
+    }
+    return true;
+  });
+
+  const totalValue = filteredInvestments.reduce(
     (sum, inv) => sum + inv.quantity * inv.currentPrice,
     0
   );
-  const totalCost = investments.reduce(
+  const totalCost = filteredInvestments.reduce(
     (sum, inv) => sum + inv.quantity * inv.purchasePrice,
     0
   );
@@ -76,6 +85,23 @@ export default function InvestmentList() {
         </button>
       </div>
 
+      <div className="investment-filters">
+        <select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value as Investment['type'] | 'all')}
+          className="filter-select"
+        >
+          <option value="all">All Types</option>
+          <option value="stock">Stock</option>
+          <option value="bond">Bond</option>
+          <option value="mutual_fund">Mutual Fund</option>
+          <option value="etf">ETF</option>
+          <option value="crypto">Crypto</option>
+          <option value="real_estate">Real Estate</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
       {showForm && (
         <InvestmentForm
           investment={editingInvestment}
@@ -83,18 +109,20 @@ export default function InvestmentList() {
         />
       )}
 
+      {investments.length > 0 && <InvestmentCharts investments={investments} />}
+
       {isLoading ? (
         <div className="empty-state">
           <p>Loading investments...</p>
         </div>
       ) : (
         <div className="investment-items">
-          {investments.length === 0 ? (
+          {filteredInvestments.length === 0 ? (
             <div className="empty-state">
-              <p>No investments found. Add your first investment to get started!</p>
+              <p>No investments found{filterType !== 'all' ? ` in ${filterType} category` : ''}. Add your first investment to get started!</p>
             </div>
           ) : (
-            investments.map(investment => (
+            filteredInvestments.map(investment => (
               <InvestmentItem
                 key={investment.id}
                 investment={investment}

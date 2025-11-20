@@ -24,6 +24,23 @@ export interface Expense {
   updatedAt: Date;
 }
 
+// Income types
+export type IncomeCategory = 'salary' | 'bonus' | 'freelance' | 'investment_returns' | 'other';
+
+export interface Income {
+  id: string;
+  userId: string; // For future multi-user support
+  category: IncomeCategory;
+  name: string;
+  amount: number;
+  date: Date;
+  isRecurring: boolean;
+  recurringFrequency?: 'monthly' | 'weekly' | 'yearly';
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Investment types
 export interface Investment {
   id: string;
@@ -54,10 +71,14 @@ export interface SavingsOpportunity {
 // Financial summary
 export interface FinancialSummary {
   totalExpenses: number;
+  totalIncome: number;
+  monthlyRecurringIncome: number;
+  monthlyRecurringExpenses: number;
+  netCashFlow: number;
   totalInvestments: number;
   totalInvestmentValue: number;
-  monthlyRecurringExpenses: number;
   upcomingExpenses: Expense[];
+  recentIncome: Income[];
   savingsOpportunities: SavingsOpportunity[];
 }
 

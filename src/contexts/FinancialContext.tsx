@@ -1,21 +1,25 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import type { Expense, Investment, User, FinancialSummary } from '../types';
+import type { Expense, Income, Investment, User, FinancialSummary } from '../types';
 import { supabase } from '../lib/supabase';
 
 interface FinancialContextType {
   user: User | null;
   expenses: Expense[];
+  income: Income[];
   investments: Investment[];
   isLoading: boolean;
   addExpense: (expense: Omit<Expense, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateExpense: (id: string, updates: Partial<Expense>) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
+  addIncome: (income: Omit<Income, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateIncome: (id: string, updates: Partial<Income>) => Promise<void>;
+  deleteIncome: (id: string) => Promise<void>;
   addInvestment: (investment: Omit<Investment, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateInvestment: (id: string, updates: Partial<Investment>) => Promise<void>;
   deleteInvestment: (id: string) => Promise<void>;
   getFinancialSummary: () => FinancialSummary;
-  setDataFromFile: (data: { user: User | null; expenses: Expense[]; investments: Investment[] }) => Promise<void>;
+  setDataFromFile: (data: { user: User | null; expenses: Expense[]; income: Income[]; investments: Investment[] }) => Promise<void>;
 }
 
 const FinancialContext = createContext<FinancialContextType | undefined>(undefined);
@@ -61,6 +65,38 @@ function expenseFromDb(dbExpense: any): Expense {
   };
 }
 
+function incomeToDb(income: Income) {
+  return {
+    id: income.id,
+    user_id: income.userId,
+    category: income.category,
+    name: income.name,
+    amount: income.amount,
+    date: income.date.toISOString(),
+    is_recurring: income.isRecurring,
+    recurring_frequency: income.recurringFrequency || null,
+    notes: income.notes || null,
+    created_at: income.createdAt.toISOString(),
+    updated_at: income.updatedAt.toISOString(),
+  };
+}
+
+function incomeFromDb(dbIncome: any): Income {
+  return {
+    id: dbIncome.id,
+    userId: dbIncome.user_id,
+    category: dbIncome.category,
+    name: dbIncome.name,
+    amount: dbIncome.amount,
+    date: new Date(dbIncome.date),
+    isRecurring: dbIncome.is_recurring,
+    recurringFrequency: dbIncome.recurring_frequency || undefined,
+    notes: dbIncome.notes || undefined,
+    createdAt: new Date(dbIncome.created_at),
+    updatedAt: new Date(dbIncome.updated_at),
+  };
+}
+
 function investmentToDb(investment: Investment) {
   return {
     id: investment.id,
@@ -98,6 +134,7 @@ function investmentFromDb(dbInvestment: any): Investment {
 export function FinancialProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [income, setIncome] = useState<Income[]>([]);
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -164,6 +201,19 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
         console.error('Error loading expenses:', expensesError);
       } else {
         setExpenses(expensesData?.map(expenseFromDb) || []);
+      }
+
+      // Load income
+      const { data: incomeData, error: incomeError } = await supabase
+        .from('income')
+        .select('*')
+        .eq('user_id', DEFAULT_USER_ID)
+        .order('created_at', { ascending: false });
+
+      if (incomeError) {
+        console.error('Error loading income:', incomeError);
+      } else {
+        setIncome(incomeData?.map(incomeFromDb) || []);
       }
 
       // Load investments
@@ -268,6 +318,87 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
     setExpenses(prev => prev.filter(e => e.id !== id));
   };
 
+  const addIncome = async (incomeData: Omit<Income, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+    if (!user) return;
+
+    const now = new Date();
+    const newIncome: Income = {
+      ...incomeData,
+      id: crypto.randomUUID(),
+      userId: user.id,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const dbIncome = incomeToDb(newIncome);
+    const { data, error } = await (supabase
+      .from('income') as any)
+      .insert(dbIncome)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding income:', error);
+      throw error;
+    }
+
+    if (data) {
+      setIncome(prev => [incomeFromDb(data), ...prev]);
+    }
+  };
+
+  const updateIncome = async (id: string, updates: Partial<Income>) => {
+    const incomeItem = income.find(i => i.id === id);
+    if (!incomeItem) return;
+
+    const updatedIncome = {
+      ...incomeItem,
+      ...updates,
+      updatedAt: new Date(),
+    };
+
+    const dbIncome = incomeToDb(updatedIncome);
+    const updateData: any = {
+      category: dbIncome.category,
+      name: dbIncome.name,
+      amount: dbIncome.amount,
+      date: dbIncome.date,
+      is_recurring: dbIncome.is_recurring,
+      recurring_frequency: dbIncome.recurring_frequency,
+      notes: dbIncome.notes,
+      updated_at: dbIncome.updated_at,
+    };
+    const { data, error } = await (supabase
+      .from('income') as any)
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating income:', error);
+      throw error;
+    }
+
+    if (data) {
+      setIncome(prev => prev.map(i => i.id === id ? incomeFromDb(data) : i));
+    }
+  };
+
+  const deleteIncome = async (id: string) => {
+    const { error } = await supabase
+      .from('income')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting income:', error);
+      throw error;
+    }
+
+    setIncome(prev => prev.filter(i => i.id !== id));
+  };
+
   const addInvestment = async (investmentData: Omit<Investment, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
     if (!user) return;
 
@@ -350,7 +481,7 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
     setInvestments(prev => prev.filter(i => i.id !== id));
   };
 
-  const setDataFromFile = async (data: { user: User | null; expenses: Expense[]; investments: Investment[] }) => {
+  const setDataFromFile = async (data: { user: User | null; expenses: Expense[]; income: Income[]; investments: Investment[] }) => {
     if (!data.user) return;
 
     try {
@@ -371,8 +502,9 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
 
       setUser(data.user);
 
-      // Delete all existing expenses and investments for this user
+      // Delete all existing expenses, income, and investments for this user
       await supabase.from('expenses').delete().eq('user_id', data.user.id);
+      await supabase.from('income').delete().eq('user_id', data.user.id);
       await supabase.from('investments').delete().eq('user_id', data.user.id);
 
       // Insert new expenses
@@ -385,6 +517,19 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
         if (expensesError) {
           console.error('Error importing expenses:', expensesError);
           throw expensesError;
+        }
+      }
+
+      // Insert new income
+      if (data.income.length > 0) {
+        const dbIncome = data.income.map(incomeToDb);
+        const { error: incomeError } = await supabase
+          .from('income')
+          .insert(dbIncome as any);
+
+        if (incomeError) {
+          console.error('Error importing income:', incomeError);
+          throw incomeError;
         }
       }
 
@@ -416,10 +561,21 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
     const unpaidExpenses = expenses.filter(e => !e.isPaid);
     const totalExpenses = unpaidExpenses.reduce((sum, e) => sum + e.amount, 0);
 
+    // Calculate total income
+    const totalIncome = income.reduce((sum, i) => sum + i.amount, 0);
+
+    // Calculate monthly recurring income
+    const monthlyRecurringIncome = income
+      .filter(i => i.isRecurring && i.recurringFrequency === 'monthly')
+      .reduce((sum, i) => sum + i.amount, 0);
+
     // Calculate monthly recurring expenses
-    const monthlyRecurring = expenses
+    const monthlyRecurringExpenses = expenses
       .filter(e => e.isRecurring && e.recurringFrequency === 'monthly' && !e.isPaid)
       .reduce((sum, e) => sum + e.amount, 0);
+
+    // Calculate net cash flow
+    const netCashFlow = monthlyRecurringIncome - monthlyRecurringExpenses;
 
     // Get upcoming expenses (next 30 days)
     const thirtyDaysFromNow = new Date(now);
@@ -427,6 +583,14 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
     const upcomingExpenses = expenses
       .filter(e => !e.isPaid && e.dueDate >= now && e.dueDate <= thirtyDaysFromNow)
       .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+
+    // Get recent income (last 30 days)
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const recentIncome = income
+      .filter(i => i.date >= thirtyDaysAgo)
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .slice(0, 5);
 
     // Calculate investment totals
     const totalInvestments = investments.length;
@@ -440,10 +604,14 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
 
     return {
       totalExpenses,
+      totalIncome,
+      monthlyRecurringIncome,
+      monthlyRecurringExpenses,
+      netCashFlow,
       totalInvestments,
       totalInvestmentValue,
-      monthlyRecurringExpenses: monthlyRecurring,
       upcomingExpenses,
+      recentIncome,
       savingsOpportunities,
     };
   };
@@ -453,11 +621,15 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         expenses,
+        income,
         investments,
         isLoading,
         addExpense,
         updateExpense,
         deleteExpense,
+        addIncome,
+        updateIncome,
+        deleteIncome,
         addInvestment,
         updateInvestment,
         deleteInvestment,

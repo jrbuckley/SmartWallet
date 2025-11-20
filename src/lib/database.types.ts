@@ -59,6 +59,47 @@ export interface Database {
           updated_at?: string
         }
       }
+      income: {
+        Row: {
+          id: string
+          user_id: string
+          category: 'salary' | 'bonus' | 'freelance' | 'investment_returns' | 'other'
+          name: string
+          amount: number
+          date: string
+          is_recurring: boolean
+          recurring_frequency: 'monthly' | 'weekly' | 'yearly' | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          category: 'salary' | 'bonus' | 'freelance' | 'investment_returns' | 'other'
+          name: string
+          amount: number
+          date: string
+          is_recurring?: boolean
+          recurring_frequency?: 'monthly' | 'weekly' | 'yearly' | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          category?: 'salary' | 'bonus' | 'freelance' | 'investment_returns' | 'other'
+          name?: string
+          amount?: number
+          date?: string
+          is_recurring?: boolean
+          recurring_frequency?: 'monthly' | 'weekly' | 'yearly' | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       investments: {
         Row: {
           id: string
