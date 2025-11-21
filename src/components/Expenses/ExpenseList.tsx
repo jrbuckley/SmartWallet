@@ -4,6 +4,8 @@ import type { Expense, ExpenseCategory } from '../../types';
 import ExpenseForm from './ExpenseForm';
 import ExpenseItem from './ExpenseItem';
 import ExpenseCharts from './ExpenseCharts';
+import ConfirmationModal from '../Common/ConfirmationModal';
+import Alert from '../Common/Alert';
 import './ExpenseList.css';
 
 export default function ExpenseList() {
@@ -14,6 +16,12 @@ export default function ExpenseList() {
   const [filterPaid, setFilterPaid] = useState<'all' | 'paid' | 'unpaid'>('all');
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; id: string | null }>({ isOpen: false, id: null });
+  const [alert, setAlert] = useState<{ isOpen: boolean; message: string; type: 'success' | 'error' | 'info' | 'warning' }>({
+    isOpen: false,
+    message: '',
+    type: 'info',
+  });
 
   const handleEdit = (expense: Expense) => {
     setEditingExpense(expense);
@@ -33,20 +41,24 @@ export default function ExpenseList() {
       });
     } catch (error) {
       console.error('Error updating expense:', error);
-      alert('Failed to update expense. Please try again.');
+      setAlert({ isOpen: true, message: 'Failed to update expense. Please try again.', type: 'error' });
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this expense?')) {
-      return;
-    }
-    setDeletingId(id);
+  const handleDelete = (id: string) => {
+    setConfirmDelete({ isOpen: true, id });
+  };
+
+  const confirmDeleteAction = async () => {
+    if (!confirmDelete.id) return;
+    setConfirmDelete({ isOpen: false, id: null });
+    setDeletingId(confirmDelete.id);
     try {
-      await deleteExpense(id);
+      await deleteExpense(confirmDelete.id);
+      setAlert({ isOpen: true, message: 'Expense deleted successfully', type: 'success' });
     } catch (error) {
       console.error('Error deleting expense:', error);
-      alert('Failed to delete expense. Please try again.');
+      setAlert({ isOpen: true, message: 'Failed to delete expense. Please try again.', type: 'error' });
     } finally {
       setDeletingId(null);
     }
@@ -113,6 +125,24 @@ export default function ExpenseList() {
           onClose={handleFormClose}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={confirmDelete.isOpen}
+        title="Delete Expense"
+        message="Are you sure you want to delete this expense?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmDelete({ isOpen: false, id: null })}
+      />
+
+      <Alert
+        isOpen={alert.isOpen}
+        message={alert.message}
+        type={alert.type}
+        onClose={() => setAlert({ ...alert, isOpen: false })}
+      />
 
       {expenses.length > 0 && <ExpenseCharts expenses={expenses} />}
 

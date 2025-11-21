@@ -152,11 +152,30 @@ export function generateRecurringExpenses(
 /**
  * Generate recurring income based on frequency
  */
+/**
+ * Convert Date to YYYY-MM-DD string
+ */
+function dateToString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Convert YYYY-MM-DD string to Date (at midnight local time)
+ */
+function stringToDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
 export function generateRecurringIncome(
   existingIncome: Income[],
   addIncome: (income: Omit<Income, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>
 ): Promise<void> {
   const now = new Date();
+  const todayStr = dateToString(now);
   const promises: Promise<void>[] = [];
 
   // Group recurring income by unique key (name + category + frequency)
@@ -184,22 +203,13 @@ export function generateRecurringIncome(
     // Skip if no recurring frequency (shouldn't happen, but TypeScript safety)
     if (!originalEntry.recurringFrequency) continue;
     
-    const originalDate = new Date(originalEntry.date);
-    originalDate.setHours(0, 0, 0, 0);
-    const originalYear = originalDate.getFullYear();
-    const originalMonth = originalDate.getMonth();
-    const originalDay = originalDate.getDate();
+    // Convert to string format for reliable date comparisons
+    const originalDateStr = dateToString(originalEntry.date);
+    const [originalYear, originalMonth, originalDay] = originalDateStr.split('-').map(Number);
     
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
-    
-    // Get all existing dates for this recurring income (normalized to dates only)
+    // Get all existing dates for this recurring income (as strings)
     const existingDates = new Set(
-      sameRecurringIncome.map(i => {
-        const d = new Date(i.date);
-        d.setHours(0, 0, 0, 0);
-        return d.getTime();
-      })
+      sameRecurringIncome.map(i => dateToString(i.date))
     );
 
     // For semi-monthly, create the next instance if it doesn't exist
@@ -207,103 +217,101 @@ export function generateRecurringIncome(
     // Only create dates that are on or before today (not future dates)
     if (originalEntry.recurringFrequency === 'semimonthly') {
       // Determine the other semi-monthly date in the same month as the original entry
-      let nextSemiMonthlyDate: Date | null = null;
+      let nextSemiMonthlyDateStr: string;
       
       if (originalDay <= 15) {
         // If original is on 1st-15th, the other date is the 15th of the same month
-        nextSemiMonthlyDate = new Date(originalYear, originalMonth, 15);
+        nextSemiMonthlyDateStr = `${originalYear}-${String(originalMonth).padStart(2, '0')}-15`;
       } else {
         // If original is on 16th-31st, the other date is the 1st of next month
-        nextSemiMonthlyDate = new Date(originalYear, originalMonth + 1, 1);
+        const nextMonth = originalMonth === 12 ? 1 : originalMonth + 1;
+        const nextYear = originalMonth === 12 ? originalYear + 1 : originalYear;
+        nextSemiMonthlyDateStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
       }
-      nextSemiMonthlyDate.setHours(0, 0, 0, 0);
       
       // Only create the next semi-monthly date if:
       // 1. It's on or before today (not future)
       // 2. It doesn't already exist
       // 3. It's NOT the same as the original date (don't recreate the original)
-      if (nextSemiMonthlyDate <= today && 
-          nextSemiMonthlyDate.getTime() !== originalDate.getTime() &&
-          !existingDates.has(nextSemiMonthlyDate.getTime())) {
+      if (nextSemiMonthlyDateStr <= todayStr && 
+          nextSemiMonthlyDateStr !== originalDateStr &&
+          !existingDates.has(nextSemiMonthlyDateStr)) {
         promises.push(
           addIncome({
             name: originalEntry.name,
             category: originalEntry.category,
             amount: originalEntry.amount,
-            date: nextSemiMonthlyDate,
+            date: stringToDate(nextSemiMonthlyDateStr),
             isRecurring: true,
             recurringFrequency: originalEntry.recurringFrequency,
             notes: originalEntry.notes,
           })
         );
         // Add to existing dates to prevent duplicates in the same run
-        existingDates.add(nextSemiMonthlyDate.getTime());
+        existingDates.add(nextSemiMonthlyDateStr);
       }
       
       // Also create any past instances from the month AFTER the original entry up to today
       // This handles cases where the user hasn't opened the app in a while
       // But only if the original date is in the past or today
-      if (originalDate <= today) {
-        const currentYear = today.getFullYear();
-        const currentMonth = today.getMonth();
+      if (originalDateStr <= todayStr) {
+        const [todayYear, todayMonth] = todayStr.split('-').map(Number);
         
         // Start from the month after the original entry (we already handled the same month above)
-        // Ensure we never go before the original month
-        let checkDate = new Date(originalYear, originalMonth + 1, 1);
-        checkDate.setHours(0, 0, 0, 0);
+        let checkYear = originalMonth === 12 ? originalYear + 1 : originalYear;
+        let checkMonth = originalMonth === 12 ? 1 : originalMonth + 1;
         
         // Generate all semi-monthly dates from the month after original entry up to today
-        while (checkDate.getFullYear() < currentYear || 
-               (checkDate.getFullYear() === currentYear && checkDate.getMonth() <= currentMonth)) {
-          const year = checkDate.getFullYear();
-          const month = checkDate.getMonth();
-          
+        while (checkYear < todayYear || (checkYear === todayYear && checkMonth <= todayMonth)) {
           // Safety check: never process the month before the original entry
-          if (year < originalYear || (year === originalYear && month < originalMonth)) {
-            checkDate.setMonth(checkDate.getMonth() + 1);
-            checkDate.setDate(1);
+          if (checkYear < originalYear || (checkYear === originalYear && checkMonth < originalMonth)) {
+            checkMonth++;
+            if (checkMonth > 12) {
+              checkMonth = 1;
+              checkYear++;
+            }
             continue;
           }
           
           // Check both the 1st and 15th of each month
           const datesToCheck = [
-            new Date(year, month, 1),
-            new Date(year, month, 15),
+            `${checkYear}-${String(checkMonth).padStart(2, '0')}-01`,
+            `${checkYear}-${String(checkMonth).padStart(2, '0')}-15`,
           ];
           
-          for (const dateToCheck of datesToCheck) {
-            dateToCheck.setHours(0, 0, 0, 0);
-            
+          for (const dateToCheckStr of datesToCheck) {
             // Only create if:
             // 1. The date is on or before today (not future)
             // 2. The date is STRICTLY after the original date (don't go backwards or recreate original)
             // 3. It doesn't already exist
-            if (dateToCheck <= today && 
-                dateToCheck > originalDate &&  // Use > instead of >= to ensure we never create the original
-                !existingDates.has(dateToCheck.getTime())) {
+            if (dateToCheckStr <= todayStr && 
+                dateToCheckStr > originalDateStr &&
+                !existingDates.has(dateToCheckStr)) {
               promises.push(
                 addIncome({
                   name: originalEntry.name,
                   category: originalEntry.category,
                   amount: originalEntry.amount,
-                  date: dateToCheck,
+                  date: stringToDate(dateToCheckStr),
                   isRecurring: true,
                   recurringFrequency: originalEntry.recurringFrequency,
                   notes: originalEntry.notes,
                 })
               );
               // Add to existing dates to prevent duplicates in the same run
-              existingDates.add(dateToCheck.getTime());
+              existingDates.add(dateToCheckStr);
             }
           }
           
           // Move to next month
-          checkDate.setMonth(checkDate.getMonth() + 1);
-          checkDate.setDate(1);
+          checkMonth++;
+          if (checkMonth > 12) {
+            checkMonth = 1;
+            checkYear++;
+          }
           
           // Safety check: don't go beyond current month
-          if (checkDate.getFullYear() > currentYear || 
-              (checkDate.getFullYear() === currentYear && checkDate.getMonth() > currentMonth)) {
+          if (checkYear > todayYear || (checkYear === todayYear && checkMonth > todayMonth)) {
             break;
           }
         }
@@ -314,12 +322,6 @@ export function generateRecurringIncome(
       const latestDate = sameRecurringIncome.reduce((latest, i) => {
         return i.date > latest ? i.date : latest;
       }, originalEntry.date);
-      
-      const originalDate = new Date(originalEntry.date);
-      originalDate.setHours(0, 0, 0, 0);
-      
-      const today = new Date(now);
-      today.setHours(0, 0, 0, 0);
       
       const shouldCreate = shouldCreateRecurringItem(latestDate, originalEntry.recurringFrequency, now);
 
@@ -334,13 +336,13 @@ export function generateRecurringIncome(
         let nextDate = new Date(latestDate);
         for (let i = 0; i < instancesToCreate; i++) {
           nextDate = getNextDueDate(nextDate, originalEntry.recurringFrequency);
-          nextDate.setHours(0, 0, 0, 0);
+          const nextDateStr = dateToString(nextDate);
           
           // Only create if the date is on or before today (not future)
           // and on or after the original entry date (don't go backwards)
-          if (nextDate <= today && nextDate >= originalDate) {
-            // Check if this instance already exists (compare dates ignoring time)
-            const alreadyExists = existingDates.has(nextDate.getTime());
+          if (nextDateStr <= todayStr && nextDateStr >= originalDateStr) {
+            // Check if this instance already exists (compare dates as strings)
+            const alreadyExists = existingDates.has(nextDateStr);
 
             if (!alreadyExists) {
               promises.push(
@@ -355,7 +357,7 @@ export function generateRecurringIncome(
                 })
               );
               // Add to existing dates to prevent duplicates in the same run
-              existingDates.add(nextDate.getTime());
+              existingDates.add(nextDateStr);
             }
           }
         }

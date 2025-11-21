@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useFinancial } from '../../contexts/FinancialContext';
 import type { Debt, DebtType } from '../../types';
+import Alert from '../Common/Alert';
 import './DebtForm.css';
 
 interface DebtFormProps {
@@ -22,6 +23,11 @@ export default function DebtForm({ debt, onClose }: DebtFormProps) {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [alert, setAlert] = useState<{ isOpen: boolean; message: string; type: 'success' | 'error' | 'info' | 'warning' }>({
+    isOpen: false,
+    message: '',
+    type: 'info',
+  });
 
   useEffect(() => {
     if (debt) {
@@ -63,14 +69,21 @@ export default function DebtForm({ debt, onClose }: DebtFormProps) {
       onClose();
     } catch (error) {
       console.error('Error saving debt:', error);
-      alert('Failed to save debt. Please try again.');
+      setAlert({ isOpen: true, message: 'Failed to save debt. Please try again.', type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <>
+      <Alert
+        isOpen={alert.isOpen}
+        message={alert.message}
+        type={alert.type}
+        onClose={() => setAlert({ ...alert, isOpen: false })}
+      />
+      <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>{debt ? 'Edit Debt' : 'Add New Debt'}</h3>
@@ -194,6 +207,7 @@ export default function DebtForm({ debt, onClose }: DebtFormProps) {
         </form>
       </div>
     </div>
+    </>
   );
 }
 

@@ -4,6 +4,8 @@ import type { Investment } from '../../types';
 import InvestmentForm from './InvestmentForm';
 import InvestmentItem from './InvestmentItem';
 import InvestmentCharts from './InvestmentCharts';
+import ConfirmationModal from '../Common/ConfirmationModal';
+import Alert from '../Common/Alert';
 import './InvestmentList.css';
 
 export default function InvestmentList() {
@@ -12,6 +14,12 @@ export default function InvestmentList() {
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
   const [filterType, setFilterType] = useState<Investment['type'] | 'all'>('all');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; id: string | null }>({ isOpen: false, id: null });
+  const [alert, setAlert] = useState<{ isOpen: boolean; message: string; type: 'success' | 'error' | 'info' | 'warning' }>({
+    isOpen: false,
+    message: '',
+    type: 'info',
+  });
 
   const handleEdit = (investment: Investment) => {
     setEditingInvestment(investment);
@@ -23,16 +31,20 @@ export default function InvestmentList() {
     setEditingInvestment(null);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this investment?')) {
-      return;
-    }
-    setDeletingId(id);
+  const handleDelete = (id: string) => {
+    setConfirmDelete({ isOpen: true, id });
+  };
+
+  const confirmDeleteAction = async () => {
+    if (!confirmDelete.id) return;
+    setConfirmDelete({ isOpen: false, id: null });
+    setDeletingId(confirmDelete.id);
     try {
-      await deleteInvestment(id);
+      await deleteInvestment(confirmDelete.id);
+      setAlert({ isOpen: true, message: 'Investment deleted successfully', type: 'success' });
     } catch (error) {
       console.error('Error deleting investment:', error);
-      alert('Failed to delete investment. Please try again.');
+      setAlert({ isOpen: true, message: 'Failed to delete investment. Please try again.', type: 'error' });
     } finally {
       setDeletingId(null);
     }
@@ -108,6 +120,24 @@ export default function InvestmentList() {
           onClose={handleFormClose}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={confirmDelete.isOpen}
+        title="Delete Investment"
+        message="Are you sure you want to delete this investment?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmDelete({ isOpen: false, id: null })}
+      />
+
+      <Alert
+        isOpen={alert.isOpen}
+        message={alert.message}
+        type={alert.type}
+        onClose={() => setAlert({ ...alert, isOpen: false })}
+      />
 
       {investments.length > 0 && <InvestmentCharts investments={investments} />}
 

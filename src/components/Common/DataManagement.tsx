@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { useFinancial } from '../../contexts/FinancialContext';
 import { exportDataAsJSON, importDataFromJSON } from '../../utils/fileStorage';
+import ConfirmationModal from './ConfirmationModal';
+import Alert from './Alert';
 import './DataManagement.css';
 
 export default function DataManagement() {
   const { user, expenses, income, debts, investments, setDataFromFile } = useFinancial();
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  const showMessage = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage(null), 3000);
-  };
+  const [confirmImport, setConfirmImport] = useState(false);
+  const [alert, setAlert] = useState<{ isOpen: boolean; message: string; type: 'success' | 'error' | 'info' | 'warning' }>({
+    isOpen: false,
+    message: '',
+    type: 'info',
+  });
 
   const handleExportJSON = () => {
     try {
@@ -31,17 +33,19 @@ export default function DataManagement() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showMessage('success', 'Data exported as JSON!');
+      setAlert({ isOpen: true, message: 'Data exported as JSON!', type: 'success' });
     } catch (error) {
       console.error('Error exporting JSON:', error);
-      showMessage('error', 'Failed to export data.');
+      setAlert({ isOpen: true, message: 'Failed to export data.', type: 'error' });
     }
   };
 
-  const handleImportJSON = async () => {
-    if (!confirm('Importing data will replace your current data in Supabase. Are you sure?')) {
-      return;
-    }
+  const handleImportJSON = () => {
+    setConfirmImport(true);
+  };
+
+  const confirmImportAction = async () => {
+    setConfirmImport(false);
 
     setIsLoading(true);
     const input = document.createElement('input');
@@ -57,13 +61,13 @@ export default function DataManagement() {
             const data = importDataFromJSON(json);
             if (data) {
               await setDataFromFile(data);
-              showMessage('success', 'Data imported successfully!');
+              setAlert({ isOpen: true, message: 'Data imported successfully!', type: 'success' });
             } else {
-              showMessage('error', 'Invalid JSON file format.');
+              setAlert({ isOpen: true, message: 'Invalid JSON file format.', type: 'error' });
             }
           } catch (error) {
             console.error('Error importing JSON:', error);
-            showMessage('error', 'Failed to import data. Please check the file format.');
+            setAlert({ isOpen: true, message: 'Failed to import data. Please check the file format.', type: 'error' });
           } finally {
             setIsLoading(false);
           }
@@ -79,15 +83,27 @@ export default function DataManagement() {
   return (
     <div className="data-management">
       <h2>Data Management</h2>
+      
+      <ConfirmationModal
+        isOpen={confirmImport}
+        title="Import Data"
+        message="Importing data will replace your current data in Supabase. Are you sure?"
+        confirmText="Import"
+        cancelText="Cancel"
+        variant="warning"
+        onConfirm={confirmImportAction}
+        onCancel={() => setConfirmImport(false)}
+      />
+
+      <Alert
+        isOpen={alert.isOpen}
+        message={alert.message}
+        type={alert.type}
+        onClose={() => setAlert({ ...alert, isOpen: false })}
+      />
       <p className="description">
         Export and import your financial data as JSON backups. Your data is automatically saved to Supabase.
       </p>
-
-      {message && (
-        <div className={`message ${message.type}`}>
-          {message.text}
-        </div>
-      )}
 
       <div className="data-actions">
         <div className="action-card">

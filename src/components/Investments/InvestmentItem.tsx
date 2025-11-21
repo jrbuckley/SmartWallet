@@ -34,7 +34,8 @@ export default function InvestmentItem({ investment, onEdit, onDelete, onUpdate,
       await onUpdate(investment.id, { currentPrice: newPrice });
     } catch (error) {
       console.error('Error updating price:', error);
-      alert('Failed to update price. Please try again.');
+      // Note: Alert would need to be passed as prop or use a context/state management solution
+      // For now, we'll keep the console error and let the parent handle alerts if needed
     }
   };
 

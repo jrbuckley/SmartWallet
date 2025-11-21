@@ -6,6 +6,8 @@ import DebtItem from './DebtItem';
 import PayoffStrategies from './PayoffStrategies';
 import DebtPayoffPlan from './DebtPayoffPlan';
 import DebtActionItems from './DebtActionItems';
+import ConfirmationModal from '../Common/ConfirmationModal';
+import Alert from '../Common/Alert';
 import './DebtList.css';
 
 export default function DebtList() {
@@ -14,6 +16,12 @@ export default function DebtList() {
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [filterType, setFilterType] = useState<DebtType | 'all'>('all');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; id: string | null }>({ isOpen: false, id: null });
+  const [alert, setAlert] = useState<{ isOpen: boolean; message: string; type: 'success' | 'error' | 'info' | 'warning' }>({
+    isOpen: false,
+    message: '',
+    type: 'info',
+  });
 
   const handleEdit = (debt: Debt) => {
     setEditingDebt(debt);
@@ -25,16 +33,20 @@ export default function DebtList() {
     setEditingDebt(null);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this debt?')) {
-      return;
-    }
-    setDeletingId(id);
+  const handleDelete = (id: string) => {
+    setConfirmDelete({ isOpen: true, id });
+  };
+
+  const confirmDeleteAction = async () => {
+    if (!confirmDelete.id) return;
+    setConfirmDelete({ isOpen: false, id: null });
+    setDeletingId(confirmDelete.id);
     try {
-      await deleteDebt(id);
+      await deleteDebt(confirmDelete.id);
+      setAlert({ isOpen: true, message: 'Debt deleted successfully', type: 'success' });
     } catch (error) {
       console.error('Error deleting debt:', error);
-      alert('Failed to delete debt. Please try again.');
+      setAlert({ isOpen: true, message: 'Failed to delete debt. Please try again.', type: 'error' });
     } finally {
       setDeletingId(null);
     }
@@ -98,6 +110,24 @@ export default function DebtList() {
           onClose={handleFormClose}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={confirmDelete.isOpen}
+        title="Delete Debt"
+        message="Are you sure you want to delete this debt?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmDelete({ isOpen: false, id: null })}
+      />
+
+      <Alert
+        isOpen={alert.isOpen}
+        message={alert.message}
+        type={alert.type}
+        onClose={() => setAlert({ ...alert, isOpen: false })}
+      />
 
       {debts.length > 0 && (
         <>

@@ -4,6 +4,8 @@ import type { Income, IncomeCategory } from '../../types';
 import IncomeForm from './IncomeForm';
 import IncomeItem from './IncomeItem';
 import IncomeCharts from './IncomeCharts';
+import ConfirmationModal from '../Common/ConfirmationModal';
+import Alert from '../Common/Alert';
 import './IncomeList.css';
 
 export default function IncomeList() {
@@ -13,6 +15,12 @@ export default function IncomeList() {
   const [filterCategory, setFilterCategory] = useState<IncomeCategory | 'all'>('all');
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; id: string | null }>({ isOpen: false, id: null });
+  const [alert, setAlert] = useState<{ isOpen: boolean; message: string; type: 'success' | 'error' | 'info' | 'warning' }>({
+    isOpen: false,
+    message: '',
+    type: 'info',
+  });
 
   const handleEdit = (incomeItem: Income) => {
     setEditingIncome(incomeItem);
@@ -24,16 +32,20 @@ export default function IncomeList() {
     setEditingIncome(null);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this income entry?')) {
-      return;
-    }
-    setDeletingId(id);
+  const handleDelete = (id: string) => {
+    setConfirmDelete({ isOpen: true, id });
+  };
+
+  const confirmDeleteAction = async () => {
+    if (!confirmDelete.id) return;
+    setConfirmDelete({ isOpen: false, id: null });
+    setDeletingId(confirmDelete.id);
     try {
-      await deleteIncome(id);
+      await deleteIncome(confirmDelete.id);
+      setAlert({ isOpen: true, message: 'Income deleted successfully', type: 'success' });
     } catch (error) {
       console.error('Error deleting income:', error);
-      alert('Failed to delete income. Please try again.');
+      setAlert({ isOpen: true, message: 'Failed to delete income. Please try again.', type: 'error' });
     } finally {
       setDeletingId(null);
     }
@@ -91,6 +103,24 @@ export default function IncomeList() {
           onClose={handleFormClose}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={confirmDelete.isOpen}
+        title="Delete Income"
+        message="Are you sure you want to delete this income entry?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmDelete({ isOpen: false, id: null })}
+      />
+
+      <Alert
+        isOpen={alert.isOpen}
+        message={alert.message}
+        type={alert.type}
+        onClose={() => setAlert({ ...alert, isOpen: false })}
+      />
 
       {income.length > 0 && <IncomeCharts income={income} />}
 

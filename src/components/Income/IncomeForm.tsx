@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useFinancial } from '../../contexts/FinancialContext';
 import type { Income, IncomeCategory } from '../../types';
+import Alert from '../Common/Alert';
 import './IncomeForm.css';
 
 interface IncomeFormProps {
@@ -21,9 +22,16 @@ export default function IncomeForm({ income, onClose }: IncomeFormProps) {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [alert, setAlert] = useState<{ isOpen: boolean; message: string; type: 'success' | 'error' | 'info' | 'warning' }>({
+    isOpen: false,
+    message: '',
+    type: 'info',
+  });
 
   useEffect(() => {
     if (income) {
+      console.log('income props', income);
+
       setFormData({
         name: income.name,
         category: income.category,
@@ -39,17 +47,24 @@ export default function IncomeForm({ income, onClose }: IncomeFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
     try {
+      // Create date from YYYY-MM-DD string in local time (not UTC)
+      // This ensures the date matches exactly what the user entered
+      const [year, month, day] = formData.date.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      
       const incomeData = {
         name: formData.name,
         category: formData.category,
         amount: parseFloat(formData.amount),
-        date: new Date(formData.date),
+        date: date,
         isRecurring: formData.isRecurring,
         recurringFrequency: formData.isRecurring ? formData.recurringFrequency : undefined,
         notes: formData.notes || undefined,
       };
+
+      console.log('date', formData.date);
+      console.log('incomeData', incomeData);
 
       if (income) {
         await updateIncome(income.id, incomeData);
@@ -60,15 +75,22 @@ export default function IncomeForm({ income, onClose }: IncomeFormProps) {
       onClose();
     } catch (error) {
       console.error('Error saving income:', error);
-      alert('Failed to save income. Please try again.');
+      setAlert({ isOpen: true, message: 'Failed to save income. Please try again.', type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+    <>
+      <Alert
+        isOpen={alert.isOpen}
+        message={alert.message}
+        type={alert.type}
+        onClose={() => setAlert({ ...alert, isOpen: false })}
+      />
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>{income ? 'Edit Income' : 'Add New Income'}</h3>
           <button className="close-button" onClick={onClose}>×</button>
@@ -176,6 +198,7 @@ export default function IncomeForm({ income, onClose }: IncomeFormProps) {
         </form>
       </div>
     </div>
+    </>
   );
 }
 

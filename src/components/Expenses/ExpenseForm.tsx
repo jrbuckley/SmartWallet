@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useFinancial } from '../../contexts/FinancialContext';
 import type { Expense, ExpenseCategory } from '../../types';
+import Alert from '../Common/Alert';
 import './ExpenseForm.css';
 
 interface ExpenseFormProps {
@@ -35,6 +36,11 @@ export default function ExpenseForm({ expense, onClose }: ExpenseFormProps) {
   }, [expense]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [alert, setAlert] = useState<{ isOpen: boolean; message: string; type: 'success' | 'error' | 'info' | 'warning' }>({
+    isOpen: false,
+    message: '',
+    type: 'info',
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,14 +67,21 @@ export default function ExpenseForm({ expense, onClose }: ExpenseFormProps) {
       onClose();
     } catch (error) {
       console.error('Error saving expense:', error);
-      alert('Failed to save expense. Please try again.');
+      setAlert({ isOpen: true, message: 'Failed to save expense. Please try again.', type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <>
+      <Alert
+        isOpen={alert.isOpen}
+        message={alert.message}
+        type={alert.type}
+        onClose={() => setAlert({ ...alert, isOpen: false })}
+      />
+      <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>{expense ? 'Edit Expense' : 'Add New Expense'}</h3>
@@ -176,6 +189,7 @@ export default function ExpenseForm({ expense, onClose }: ExpenseFormProps) {
         </form>
       </div>
     </div>
+    </>
   );
 }
 

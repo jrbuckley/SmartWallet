@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useFinancial } from '../../contexts/FinancialContext';
 import type { Investment } from '../../types';
+import Alert from '../Common/Alert';
 import './InvestmentForm.css';
 
 interface InvestmentFormProps {
@@ -37,6 +38,11 @@ export default function InvestmentForm({ investment, onClose }: InvestmentFormPr
   }, [investment]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [alert, setAlert] = useState<{ isOpen: boolean; message: string; type: 'success' | 'error' | 'info' | 'warning' }>({
+    isOpen: false,
+    message: '',
+    type: 'info',
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,14 +69,21 @@ export default function InvestmentForm({ investment, onClose }: InvestmentFormPr
       onClose();
     } catch (error) {
       console.error('Error saving investment:', error);
-      alert('Failed to save investment. Please try again.');
+      setAlert({ isOpen: true, message: 'Failed to save investment. Please try again.', type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <>
+      <Alert
+        isOpen={alert.isOpen}
+        message={alert.message}
+        type={alert.type}
+        onClose={() => setAlert({ ...alert, isOpen: false })}
+      />
+      <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>{investment ? 'Edit Investment' : 'Add New Investment'}</h3>
@@ -192,6 +205,7 @@ export default function InvestmentForm({ investment, onClose }: InvestmentFormPr
         </form>
       </div>
     </div>
+    </>
   );
 }
 

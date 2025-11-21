@@ -87,13 +87,19 @@ function incomeToDb(income: Income) {
 }
 
 function incomeFromDb(dbIncome: any): Income {
+  // Parse date from ISO string and create in local time to avoid timezone shifts
+  // Extract YYYY-MM-DD from the ISO string and create date in local timezone
+  const dateStr = dbIncome.date.split('T')[0]; // Get YYYY-MM-DD part
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day); // Create in local time
+  
   return {
     id: dbIncome.id,
     userId: dbIncome.user_id,
     category: dbIncome.category,
     name: dbIncome.name,
     amount: dbIncome.amount,
-    date: new Date(dbIncome.date),
+    date: date,
     isRecurring: dbIncome.is_recurring,
     recurringFrequency: dbIncome.recurring_frequency || undefined,
     notes: dbIncome.notes || undefined,
@@ -402,6 +408,8 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
       const newIncomeItem = incomeFromDb(data);
       setIncome(prev => {
         const updatedIncome = [newIncomeItem, ...prev];
+
+        console.log('updatedIncome', updatedIncome);
         
         // If this is a recurring income, generate recurring instances immediately
         // Pass all income items (including the new one) to the generator
@@ -440,6 +448,9 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
       notes: dbIncome.notes,
       updated_at: dbIncome.updated_at,
     };
+
+    console.log('updateData', updateData);
+
     const { data, error } = await (supabase
       .from('income') as any)
       .update(updateData)
