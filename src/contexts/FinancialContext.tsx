@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import type { Debt, Expense, Income, Investment, User, FinancialSummary } from '../types';
 import { supabase } from '../lib/supabase';
+import { generateRecurringExpenses, generateRecurringIncome } from '../utils/recurringGenerator';
 
 interface FinancialContextType {
   user: User | null;
@@ -176,11 +177,14 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
   const [debts, setDebts] = useState<Debt[]>([]);
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const recurringGeneratedRef = useRef(false);
 
   // Load data from Supabase on mount
   useEffect(() => {
     loadData();
   }, []);
+
+  // Note: Recurring items generation is handled below with proper guards to prevent duplicate runs
 
   const loadData = async () => {
     setIsLoading(true);
@@ -395,7 +399,23 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
     }
 
     if (data) {
-      setIncome(prev => [incomeFromDb(data), ...prev]);
+      const newIncomeItem = incomeFromDb(data);
+      setIncome(prev => {
+        const updatedIncome = [newIncomeItem, ...prev];
+        
+        // If this is a recurring income, generate recurring instances immediately
+        // Pass all income items (including the new one) to the generator
+        if (newIncomeItem.isRecurring && newIncomeItem.recurringFrequency) {
+          // Use a small delay to ensure state is fully updated
+          setTimeout(() => {
+            generateRecurringIncome(updatedIncome, addIncome).catch(error => {
+              console.error('Error generating recurring income after add:', error);
+            });
+          }, 100);
+        }
+        
+        return updatedIncome;
+      });
     }
   };
 
@@ -769,6 +789,47 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
       savingsOpportunities,
     };
   };
+
+  // Generate recurring items after data loads and functions are available
+  // Only run once per data load to avoid infinite loops
+  useEffect(() => {
+    if (!isLoading && expenses.length > 0 && user && !recurringGeneratedRef.current) {
+      // Use a small delay to ensure addExpense is available
+      const timer = setTimeout(() => {
+        generateRecurringExpenses(expenses, addExpense)
+          .then(() => {
+            recurringGeneratedRef.current = true;
+          })
+          .catch(error => {
+            console.error('Error generating recurring expenses:', error);
+          });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, expenses.length, user, addExpense]);
+
+  useEffect(() => {
+    if (!isLoading && income.length > 0 && user && !recurringGeneratedRef.current) {
+      // Use a small delay to ensure addIncome is available
+      const timer = setTimeout(() => {
+        generateRecurringIncome(income, addIncome)
+          .then(() => {
+            recurringGeneratedRef.current = true;
+          })
+          .catch(error => {
+            console.error('Error generating recurring income:', error);
+          });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, income.length, user, addIncome]);
+
+  // Reset the ref when data is reloaded
+  useEffect(() => {
+    if (isLoading) {
+      recurringGeneratedRef.current = false;
+    }
+  }, [isLoading]);
 
   return (
     <FinancialContext.Provider

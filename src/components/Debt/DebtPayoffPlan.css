@@ -1,0 +1,288 @@
+.payoff-plan-container {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 2rem;
+}
+
+.plan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.plan-header h3 {
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.plan-controls {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.strategy-selector,
+.extra-payment-input {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.strategy-selector label,
+.extra-payment-input label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.strategy-selector select,
+.extra-payment-input input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.strategy-selector select:focus,
+.extra-payment-input input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.extra-payment-input input {
+  width: 120px;
+}
+
+.plan-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.summary-card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 1rem;
+  text-align: center;
+}
+
+.summary-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.summary-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.summary-value.expense {
+  color: var(--danger-color);
+}
+
+.plan-timeline-chart {
+  margin-bottom: 2rem;
+}
+
+.plan-timeline-chart h4 {
+  font-size: 1.125rem;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+.plan-preview {
+  margin-top: 2rem;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.preview-header h4 {
+  font-size: 1.125rem;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.btn-toggle {
+  padding: 0.5rem 1rem;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-toggle:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--primary-color);
+}
+
+.payment-schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.payment-month {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.month-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.month-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.month-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.month-date {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.month-totals {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.875rem;
+}
+
+.month-totals span {
+  padding: 0.25rem 0.5rem;
+  background-color: var(--bg-primary);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+}
+
+.total-payment {
+  color: var(--text-primary) !important;
+  font-weight: 500;
+}
+
+.total-interest {
+  color: var(--warning-color) !important;
+}
+
+.remaining-balance {
+  color: var(--danger-color) !important;
+  font-weight: 500;
+}
+
+.month-details {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.payment-detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background-color: var(--bg-primary);
+  border-radius: var(--radius);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.debt-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 150px;
+}
+
+.payment-amount {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.payment-breakdown {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.no-data-message {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 2rem;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .plan-header {
+    flex-direction: column;
+  }
+
+  .plan-controls {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .strategy-selector,
+  .extra-payment-input {
+    width: 100%;
+  }
+
+  .extra-payment-input input {
+    width: 100%;
+  }
+
+  .month-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .month-totals {
+    width: 100%;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+

@@ -16,7 +16,7 @@ export interface Expense {
   amount: number;
   dueDate: Date;
   isRecurring: boolean;
-  recurringFrequency?: 'monthly' | 'weekly' | 'yearly';
+  recurringFrequency?: 'monthly' | 'weekly' | 'biweekly' | 'semimonthly' | 'yearly';
   isPaid: boolean;
   paidDate?: Date;
   notes?: string;
@@ -35,7 +35,7 @@ export interface Income {
   amount: number;
   date: Date;
   isRecurring: boolean;
-  recurringFrequency?: 'monthly' | 'weekly' | 'yearly';
+  recurringFrequency?: 'monthly' | 'weekly' | 'biweekly' | 'semimonthly' | 'yearly';
   notes?: string;
   createdAt: Date;
   updatedAt: Date;

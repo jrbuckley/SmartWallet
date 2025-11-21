@@ -10,10 +10,14 @@ import './PayoffStrategies.css';
 
 interface PayoffStrategiesProps {
   debts: Debt[];
+  extraPayment?: string;
+  onExtraPaymentChange?: (value: string) => void;
 }
 
-export default function PayoffStrategies({ debts }: PayoffStrategiesProps) {
-  const [extraPayment, setExtraPayment] = useState('0');
+export default function PayoffStrategies({ debts, extraPayment: externalExtraPayment, onExtraPaymentChange }: PayoffStrategiesProps) {
+  const [internalExtraPayment, setInternalExtraPayment] = useState('0');
+  const extraPayment = externalExtraPayment !== undefined ? externalExtraPayment : internalExtraPayment;
+  const setExtraPayment = onExtraPaymentChange || setInternalExtraPayment;
 
   if (debts.length === 0) {
     return (

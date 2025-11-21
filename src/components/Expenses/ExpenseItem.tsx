@@ -52,13 +52,15 @@ export default function ExpenseItem({ expense, onEdit, onDelete, onTogglePaid, i
               Due: {format(expense.dueDate, 'MMM dd, yyyy')}
               {isOverdue && <span className="overdue-badge">Overdue</span>}
             </span>
-            {expense.isRecurring && (
-              <span className="recurring-badge">
-                {expense.recurringFrequency === 'monthly' && '🔄 Monthly'}
-                {expense.recurringFrequency === 'weekly' && '🔄 Weekly'}
-                {expense.recurringFrequency === 'yearly' && '🔄 Yearly'}
-              </span>
-            )}
+                  {expense.isRecurring && (
+                    <span className="recurring-badge">
+                      {expense.recurringFrequency === 'monthly' && '🔄 Monthly'}
+                      {expense.recurringFrequency === 'weekly' && '🔄 Weekly'}
+                      {expense.recurringFrequency === 'biweekly' && '🔄 Bi-Weekly'}
+                      {expense.recurringFrequency === 'semimonthly' && '🔄 Semi-Monthly'}
+                      {expense.recurringFrequency === 'yearly' && '🔄 Yearly'}
+                    </span>
+                  )}
           </div>
           {expense.notes && <p className="expense-notes">{expense.notes}</p>}
         </div>

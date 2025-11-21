@@ -16,7 +16,7 @@ export default function IncomeForm({ income, onClose }: IncomeFormProps) {
     amount: '',
     date: '',
     isRecurring: false,
-    recurringFrequency: 'monthly' as 'monthly' | 'weekly' | 'yearly',
+    recurringFrequency: 'monthly' as 'monthly' | 'weekly' | 'biweekly' | 'semimonthly' | 'yearly',
     notes: '',
   });
 
@@ -144,9 +144,11 @@ export default function IncomeForm({ income, onClose }: IncomeFormProps) {
               <select
                 id="frequency"
                 value={formData.recurringFrequency}
-                onChange={(e) => setFormData({ ...formData, recurringFrequency: e.target.value as 'monthly' | 'weekly' | 'yearly' })}
+                onChange={(e) => setFormData({ ...formData, recurringFrequency: e.target.value as 'monthly' | 'weekly' | 'biweekly' | 'semimonthly' | 'yearly' })}
               >
                 <option value="weekly">Weekly</option>
+                <option value="biweekly">Bi-Weekly (Every 2 Weeks)</option>
+                <option value="semimonthly">Semi-Monthly (1st & 15th)</option>
                 <option value="monthly">Monthly</option>
                 <option value="yearly">Yearly</option>
               </select>

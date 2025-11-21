@@ -50,13 +50,15 @@ export default function IncomeItem({ income, onEdit, onDelete, isDeleting = fals
             <span className="date">
               Date: {format(income.date, 'MMM dd, yyyy')}
             </span>
-            {income.isRecurring && (
-              <span className="recurring-badge">
-                {income.recurringFrequency === 'monthly' && '🔄 Monthly'}
-                {income.recurringFrequency === 'weekly' && '🔄 Weekly'}
-                {income.recurringFrequency === 'yearly' && '🔄 Yearly'}
-              </span>
-            )}
+                  {income.isRecurring && (
+                    <span className="recurring-badge">
+                      {income.recurringFrequency === 'monthly' && '🔄 Monthly'}
+                      {income.recurringFrequency === 'weekly' && '🔄 Weekly'}
+                      {income.recurringFrequency === 'biweekly' && '🔄 Bi-Weekly'}
+                      {income.recurringFrequency === 'semimonthly' && '🔄 Semi-Monthly'}
+                      {income.recurringFrequency === 'yearly' && '🔄 Yearly'}
+                    </span>
+                  )}
           </div>
           {income.notes && <p className="income-notes">{income.notes}</p>}
         </div>

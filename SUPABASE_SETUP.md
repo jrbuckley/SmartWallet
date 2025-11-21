@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS expenses (
   amount DECIMAL(10, 2) NOT NULL,
   due_date TIMESTAMPTZ NOT NULL,
   is_recurring BOOLEAN DEFAULT FALSE,
-  recurring_frequency TEXT CHECK (recurring_frequency IN ('monthly', 'weekly', 'yearly')),
+  recurring_frequency TEXT CHECK (recurring_frequency IN ('monthly', 'weekly', 'biweekly', 'semimonthly', 'yearly')),
   is_paid BOOLEAN DEFAULT FALSE,
   paid_date TIMESTAMPTZ,
   notes TEXT,
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS income (
   amount DECIMAL(10, 2) NOT NULL,
   date TIMESTAMPTZ NOT NULL,
   is_recurring BOOLEAN DEFAULT FALSE,
-  recurring_frequency TEXT CHECK (recurring_frequency IN ('monthly', 'weekly', 'yearly')),
+  recurring_frequency TEXT CHECK (recurring_frequency IN ('monthly', 'weekly', 'biweekly', 'semimonthly', 'yearly')),
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -154,6 +154,10 @@ CREATE POLICY "Allow all for default user investments" ON investments
 2. Open the app in your browser
 3. Try adding an expense, income entry, debt, or investment
 4. Check your Supabase dashboard → Table Editor to see if data appears
+
+## Updating Existing Tables
+
+If you've already created the tables and need to add new options (like `semimonthly` for recurring frequency), see `UPDATE_INCOME_TABLE.md` for migration instructions.
 
 ## Troubleshooting
 

@@ -4,6 +4,8 @@ import type { Debt, DebtType } from '../../types';
 import DebtForm from './DebtForm';
 import DebtItem from './DebtItem';
 import PayoffStrategies from './PayoffStrategies';
+import DebtPayoffPlan from './DebtPayoffPlan';
+import DebtActionItems from './DebtActionItems';
 import './DebtList.css';
 
 export default function DebtList() {
@@ -50,6 +52,8 @@ export default function DebtList() {
     return b.interestRate - a.interestRate;
   });
 
+  const [extraPayment, setExtraPayment] = useState('0');
+
   const totalDebt = debts.reduce((sum, d) => sum + d.currentBalance, 0);
   const totalMinimumPayments = debts.reduce((sum, d) => sum + d.minimumPayment, 0);
   const totalInterestRate = debts.length > 0
@@ -95,7 +99,13 @@ export default function DebtList() {
         />
       )}
 
-      {debts.length > 0 && <PayoffStrategies debts={debts} />}
+      {debts.length > 0 && (
+        <>
+          <DebtActionItems debts={debts} extraPayment={parseFloat(extraPayment) || 0} />
+          <DebtPayoffPlan debts={debts} extraPayment={extraPayment} onExtraPaymentChange={setExtraPayment} />
+          <PayoffStrategies debts={debts} extraPayment={extraPayment} onExtraPaymentChange={setExtraPayment} />
+        </>
+      )}
 
       {isLoading ? (
         <div className="empty-state">

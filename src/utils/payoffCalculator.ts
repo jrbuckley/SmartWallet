@@ -2,115 +2,163 @@ import type { Debt, PayoffStrategy } from '../types';
 
 /**
  * Calculate payoff strategy using the Avalanche method (highest interest first)
+ * Correctly handles making minimum payments on all debts each month
  */
 export function calculateAvalancheStrategy(
   debts: Debt[],
   extraPayment: number = 0
 ): PayoffStrategy {
-  // Sort by interest rate (highest first)
+  // Sort by interest rate (highest first) to determine priority
   const sortedDebts = [...debts].sort((a, b) => b.interestRate - a.interestRate);
+  const order = sortedDebts.map(d => d.id);
   
+  // Initialize balances
+  const balances = new Map<string, number>();
+  debts.forEach(debt => {
+    balances.set(debt.id, debt.currentBalance);
+  });
+
+  let month = 0;
   let totalInterest = 0;
-  let totalPayments = 0;
-  let maxMonths = 0;
-  const order: string[] = [];
   let availableExtra = extraPayment;
-  
-  // Calculate payoff for each debt in order
-  for (const debt of sortedDebts) {
-    order.push(debt.id);
-    const monthlyRate = debt.interestRate / 100 / 12;
-    let balance = debt.currentBalance;
-    let debtInterest = 0;
-    let debtMonths = 0;
-    const payment = debt.minimumPayment + (debtMonths === 0 ? availableExtra : 0);
+
+  // Continue until all debts are paid off
+  while (true) {
+    month++;
     
-    while (balance > 0.01) {
-      const interest = balance * monthlyRate;
-      debtInterest += interest;
-      const principalPayment = Math.min(payment - interest, balance);
-      balance -= principalPayment;
-      debtMonths++;
+    // Check if all debts are paid off
+    const allPaid = Array.from(balances.values()).every(balance => balance <= 0.01);
+    if (allPaid) break;
+
+    // Find the priority debt (first unpaid debt in sorted order)
+    const priorityDebt = sortedDebts.find(debt => balances.get(debt.id)! > 0.01);
+    if (!priorityDebt) break;
+
+    // Process each debt for this month
+    for (const debt of debts) {
+      const debtBalance = balances.get(debt.id)!;
+      if (debtBalance <= 0.01) continue; // Skip paid-off debts
+
+      const monthlyRate = debt.interestRate / 100 / 12;
       
-      if (debtMonths > 600) break; // Safety limit (50 years)
+      // Calculate payment: minimum for all debts, plus extra for priority debt
+      let payment = debt.minimumPayment;
+      if (debt.id === priorityDebt.id) {
+        payment += availableExtra;
+      }
+
+      // Calculate interest and principal
+      const interest = debtBalance * monthlyRate;
+      const principal = Math.min(payment - interest, debtBalance);
+      const newBalance = debtBalance - principal;
+      
+      // Update balance
+      balances.set(debt.id, newBalance);
+      
+      totalInterest += interest;
+
+      // If this debt was just paid off and it was the priority debt, roll its minimum into extra
+      if (newBalance <= 0.01 && debt.id === priorityDebt.id) {
+        availableExtra += debt.minimumPayment;
+      }
     }
-    
-    totalInterest += debtInterest;
-    totalPayments += debt.currentBalance + debtInterest;
-    maxMonths = Math.max(maxMonths, debtMonths);
-    
-    // After paying off, add minimum payment to available extra for next debt
-    availableExtra += debt.minimumPayment;
+
+    // Safety limit
+    if (month > 600) break;
   }
-  
+
   const totalMinimumPayments = debts.reduce((sum, d) => sum + d.minimumPayment, 0);
-  const monthlyPayment = totalMinimumPayments + extraPayment;
-  
+  const totalPayments = debts.reduce((sum, d) => sum + d.currentBalance, 0) + totalInterest;
+
   return {
     name: 'Avalanche Method',
     description: 'Pay off debts with highest interest rates first to minimize total interest paid.',
     order,
     totalInterest,
     totalPayments,
-    monthsToPayoff: maxMonths,
-    monthlyPayment,
+    monthsToPayoff: month,
+    monthlyPayment: totalMinimumPayments + extraPayment,
   };
 }
 
 /**
  * Calculate payoff strategy using the Snowball method (lowest balance first)
+ * Correctly handles making minimum payments on all debts each month
  */
 export function calculateSnowballStrategy(
   debts: Debt[],
   extraPayment: number = 0
 ): PayoffStrategy {
-  // Sort by balance (lowest first)
+  // Sort by balance (lowest first) to determine priority
   const sortedDebts = [...debts].sort((a, b) => a.currentBalance - b.currentBalance);
+  const order = sortedDebts.map(d => d.id);
   
+  // Initialize balances
+  const balances = new Map<string, number>();
+  debts.forEach(debt => {
+    balances.set(debt.id, debt.currentBalance);
+  });
+
+  let month = 0;
   let totalInterest = 0;
-  let totalPayments = 0;
-  let maxMonths = 0;
-  const order: string[] = [];
   let availableExtra = extraPayment;
-  
-  // Calculate payoff for each debt in order
-  for (const debt of sortedDebts) {
-    order.push(debt.id);
-    const monthlyRate = debt.interestRate / 100 / 12;
-    let balance = debt.currentBalance;
-    let debtInterest = 0;
-    let debtMonths = 0;
-    const payment = debt.minimumPayment + (debtMonths === 0 ? availableExtra : 0);
+
+  // Continue until all debts are paid off
+  while (true) {
+    month++;
     
-    while (balance > 0.01) {
-      const interest = balance * monthlyRate;
-      debtInterest += interest;
-      const principalPayment = Math.min(payment - interest, balance);
-      balance -= principalPayment;
-      debtMonths++;
+    // Check if all debts are paid off
+    const allPaid = Array.from(balances.values()).every(balance => balance <= 0.01);
+    if (allPaid) break;
+
+    // Find the priority debt (first unpaid debt in sorted order)
+    const priorityDebt = sortedDebts.find(debt => balances.get(debt.id)! > 0.01);
+    if (!priorityDebt) break;
+
+    // Process each debt for this month
+    for (const debt of debts) {
+      const debtBalance = balances.get(debt.id)!;
+      if (debtBalance <= 0.01) continue; // Skip paid-off debts
+
+      const monthlyRate = debt.interestRate / 100 / 12;
       
-      if (debtMonths > 600) break; // Safety limit
+      // Calculate payment: minimum for all debts, plus extra for priority debt
+      let payment = debt.minimumPayment;
+      if (debt.id === priorityDebt.id) {
+        payment += availableExtra;
+      }
+
+      // Calculate interest and principal
+      const interest = debtBalance * monthlyRate;
+      const principal = Math.min(payment - interest, debtBalance);
+      const newBalance = debtBalance - principal;
+      
+      // Update balance
+      balances.set(debt.id, newBalance);
+      
+      totalInterest += interest;
+
+      // If this debt was just paid off and it was the priority debt, roll its minimum into extra
+      if (newBalance <= 0.01 && debt.id === priorityDebt.id) {
+        availableExtra += debt.minimumPayment;
+      }
     }
-    
-    totalInterest += debtInterest;
-    totalPayments += debt.currentBalance + debtInterest;
-    maxMonths = Math.max(maxMonths, debtMonths);
-    
-    // After paying off, add minimum payment to available extra for next debt
-    availableExtra += debt.minimumPayment;
+
+    // Safety limit
+    if (month > 600) break;
   }
-  
+
   const totalMinimumPayments = debts.reduce((sum, d) => sum + d.minimumPayment, 0);
-  const monthlyPayment = totalMinimumPayments + extraPayment;
-  
+  const totalPayments = debts.reduce((sum, d) => sum + d.currentBalance, 0) + totalInterest;
+
   return {
     name: 'Snowball Method',
     description: 'Pay off smallest debts first for psychological wins and momentum.',
     order,
     totalInterest,
     totalPayments,
-    monthsToPayoff: maxMonths,
-    monthlyPayment,
+    monthsToPayoff: month,
+    monthlyPayment: totalMinimumPayments + extraPayment,
   };
 }
 

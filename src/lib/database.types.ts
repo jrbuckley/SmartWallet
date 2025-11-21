@@ -68,7 +68,7 @@ export interface Database {
           amount: number
           date: string
           is_recurring: boolean
-          recurring_frequency: 'monthly' | 'weekly' | 'yearly' | null
+          recurring_frequency: 'monthly' | 'weekly' | 'biweekly' | 'semimonthly' | 'yearly' | null
           notes: string | null
           created_at: string
           updated_at: string
@@ -81,7 +81,7 @@ export interface Database {
           amount: number
           date: string
           is_recurring?: boolean
-          recurring_frequency?: 'monthly' | 'weekly' | 'yearly' | null
+          recurring_frequency?: 'monthly' | 'weekly' | 'biweekly' | 'semimonthly' | 'yearly' | null
           notes?: string | null
           created_at?: string
           updated_at?: string
@@ -94,7 +94,7 @@ export interface Database {
           amount?: number
           date?: string
           is_recurring?: boolean
-          recurring_frequency?: 'monthly' | 'weekly' | 'yearly' | null
+          recurring_frequency?: 'monthly' | 'weekly' | 'biweekly' | 'semimonthly' | 'yearly' | null
           notes?: string | null
           created_at?: string
           updated_at?: string
