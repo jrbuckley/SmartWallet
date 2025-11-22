@@ -63,7 +63,6 @@ export default function IncomeForm({ income, onClose }: IncomeFormProps) {
         notes: formData.notes || undefined,
       };
 
-      console.log('date', formData.date);
       console.log('incomeData', incomeData);
 
       if (income) {

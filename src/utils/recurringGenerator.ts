@@ -178,6 +178,18 @@ export function generateRecurringIncome(
   const todayStr = dateToString(now);
   const promises: Promise<void>[] = [];
 
+  // Create a Set of all existing income dates (name + category + date) to prevent duplicates
+  // This checks across ALL income, not just the same recurring group
+  const existingIncomeKeys = new Set<string>();
+  for (const incomeItem of existingIncome) {
+    const dateStr = dateToString(incomeItem.date);
+    const key = `${incomeItem.name}|${incomeItem.category}|${dateStr}`;
+    existingIncomeKeys.add(key);
+  }
+  
+  // Track items we're about to create in this run to prevent duplicates within the same execution
+  const pendingIncomeKeys = new Set<string>();
+
   // Group recurring income by unique key (name + category + frequency)
   // This ensures we only process each unique recurring income once
   const recurringIncomeMap = new Map<string, Income[]>();
@@ -231,11 +243,16 @@ export function generateRecurringIncome(
       
       // Only create the next semi-monthly date if:
       // 1. It's on or before today (not future)
-      // 2. It doesn't already exist
+      // 2. It doesn't already exist (check existing, pending, and the group)
       // 3. It's NOT the same as the original date (don't recreate the original)
+      const incomeKey = `${originalEntry.name}|${originalEntry.category}|${nextSemiMonthlyDateStr}`;
       if (nextSemiMonthlyDateStr <= todayStr && 
           nextSemiMonthlyDateStr !== originalDateStr &&
-          !existingDates.has(nextSemiMonthlyDateStr)) {
+          !existingDates.has(nextSemiMonthlyDateStr) &&
+          !existingIncomeKeys.has(incomeKey) &&
+          !pendingIncomeKeys.has(incomeKey)) {
+        // Mark as pending immediately to prevent duplicates in the same run
+        pendingIncomeKeys.add(incomeKey);
         promises.push(
           addIncome({
             name: originalEntry.name,
@@ -247,8 +264,9 @@ export function generateRecurringIncome(
             notes: originalEntry.notes,
           })
         );
-        // Add to existing dates to prevent duplicates in the same run
+        // Add to both sets to prevent duplicates in the same run
         existingDates.add(nextSemiMonthlyDateStr);
+        existingIncomeKeys.add(incomeKey);
       }
       
       // Also create any past instances from the month AFTER the original entry up to today
@@ -283,10 +301,15 @@ export function generateRecurringIncome(
             // Only create if:
             // 1. The date is on or before today (not future)
             // 2. The date is STRICTLY after the original date (don't go backwards or recreate original)
-            // 3. It doesn't already exist
+            // 3. It doesn't already exist (check existing, pending, and the group)
+            const incomeKey = `${originalEntry.name}|${originalEntry.category}|${dateToCheckStr}`;
             if (dateToCheckStr <= todayStr && 
                 dateToCheckStr > originalDateStr &&
-                !existingDates.has(dateToCheckStr)) {
+                !existingDates.has(dateToCheckStr) &&
+                !existingIncomeKeys.has(incomeKey) &&
+                !pendingIncomeKeys.has(incomeKey)) {
+              // Mark as pending immediately to prevent duplicates in the same run
+              pendingIncomeKeys.add(incomeKey);
               promises.push(
                 addIncome({
                   name: originalEntry.name,
@@ -298,8 +321,9 @@ export function generateRecurringIncome(
                   notes: originalEntry.notes,
                 })
               );
-              // Add to existing dates to prevent duplicates in the same run
+              // Add to both sets to prevent duplicates in the same run
               existingDates.add(dateToCheckStr);
+              existingIncomeKeys.add(incomeKey);
             }
           }
           
@@ -341,10 +365,15 @@ export function generateRecurringIncome(
           // Only create if the date is on or before today (not future)
           // and on or after the original entry date (don't go backwards)
           if (nextDateStr <= todayStr && nextDateStr >= originalDateStr) {
-            // Check if this instance already exists (compare dates as strings)
-            const alreadyExists = existingDates.has(nextDateStr);
+            // Check if this instance already exists (check existing, pending, and the group)
+            const incomeKey = `${originalEntry.name}|${originalEntry.category}|${nextDateStr}`;
+            const alreadyExists = existingDates.has(nextDateStr) || 
+                                  existingIncomeKeys.has(incomeKey) || 
+                                  pendingIncomeKeys.has(incomeKey);
 
             if (!alreadyExists) {
+              // Mark as pending immediately to prevent duplicates in the same run
+              pendingIncomeKeys.add(incomeKey);
               promises.push(
                 addIncome({
                   name: originalEntry.name,
@@ -356,8 +385,9 @@ export function generateRecurringIncome(
                   notes: originalEntry.notes,
                 })
               );
-              // Add to existing dates to prevent duplicates in the same run
+              // Add to both sets to prevent duplicates in the same run
               existingDates.add(nextDateStr);
+              existingIncomeKeys.add(incomeKey);
             }
           }
         }

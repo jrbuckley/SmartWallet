@@ -33,6 +33,14 @@ const FinancialContext = createContext<FinancialContextType | undefined>(undefin
 // In the future, this can be replaced with authenticated user ID
 const DEFAULT_USER_ID = 'user-1';
 
+// Helper function to convert Date to YYYY-MM-DD string for duplicate checking
+function dateToString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // Helper functions to convert between app types and database types
 function expenseToDb(expense: Expense) {
   return {
@@ -184,6 +192,7 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const recurringGeneratedRef = useRef(false);
+  const isGeneratingRecurringRef = useRef(false);
 
   // Load data from Supabase on mount
   useEffect(() => {
@@ -383,6 +392,29 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
   const addIncome = async (incomeData: Omit<Income, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
     if (!user) return;
 
+    // Check for duplicate in database before inserting
+    // This prevents duplicates even if generateRecurringIncome is called multiple times
+    // Compare by name, category, and date (ignoring time)
+    const dateStr = dateToString(incomeData.date); // YYYY-MM-DD format
+    const { data: existingData } = await (supabase
+      .from('income') as any)
+      .select('id, date')
+      .eq('user_id', user.id)
+      .eq('name', incomeData.name)
+      .eq('category', incomeData.category);
+
+    // Check if any existing entry has the same date (comparing date strings)
+    if (existingData && existingData.length > 0) {
+      for (const existing of existingData) {
+        const existingDate = existing.date as string;
+        const existingDateStr = dateToString(new Date(existingDate));
+        if (existingDateStr === dateStr) {
+          console.log('Duplicate income entry skipped:', incomeData.name, dateStr);
+          return;
+        }
+      }
+    }
+
     const now = new Date();
     const newIncome: Income = {
       ...incomeData,
@@ -406,24 +438,29 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
 
     if (data) {
       const newIncomeItem = incomeFromDb(data);
-      setIncome(prev => {
-        const updatedIncome = [newIncomeItem, ...prev];
-
-        console.log('updatedIncome', updatedIncome);
-        
-        // If this is a recurring income, generate recurring instances immediately
-        // Pass all income items (including the new one) to the generator
-        if (newIncomeItem.isRecurring && newIncomeItem.recurringFrequency) {
-          // Use a small delay to ensure state is fully updated
-          setTimeout(() => {
-            generateRecurringIncome(updatedIncome, addIncome).catch(error => {
-              console.error('Error generating recurring income after add:', error);
-            });
-          }, 100);
-        }
-        
-        return updatedIncome;
-      });
+      setIncome(prev => [newIncomeItem, ...prev]);
+      
+      // Only generate recurring instances if:
+      // 1. This is a recurring income
+      // 2. We're NOT currently in the middle of generating recurring income (to prevent recursion)
+      if (newIncomeItem.isRecurring && newIncomeItem.recurringFrequency && !isGeneratingRecurringRef.current) {
+        // Set flag immediately to prevent recursive calls
+        isGeneratingRecurringRef.current = true;
+        setTimeout(() => {
+          // Use functional update to get the absolute latest state
+          setIncome(currentIncome => {
+            generateRecurringIncome(currentIncome, addIncome)
+              .then(() => {
+                isGeneratingRecurringRef.current = false;
+              })
+              .catch(error => {
+                console.error('Error generating recurring income after add:', error);
+                isGeneratingRecurringRef.current = false;
+              });
+            return currentIncome; // Return unchanged to avoid unnecessary re-render
+          });
+        }, 150);
+      }
     }
   };
 
@@ -820,20 +857,26 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
   }, [isLoading, expenses.length, user, addExpense]);
 
   useEffect(() => {
-    if (!isLoading && income.length > 0 && user && !recurringGeneratedRef.current) {
+    // Only generate on initial load (when isLoading becomes false), not when income changes
+    // This prevents the useEffect from running when generateRecurringIncome adds new items
+    if (!isLoading && income.length > 0 && user && !recurringGeneratedRef.current && !isGeneratingRecurringRef.current) {
       // Use a small delay to ensure addIncome is available
       const timer = setTimeout(() => {
+        isGeneratingRecurringRef.current = true;
         generateRecurringIncome(income, addIncome)
           .then(() => {
             recurringGeneratedRef.current = true;
+            isGeneratingRecurringRef.current = false;
           })
           .catch(error => {
             console.error('Error generating recurring income:', error);
+            isGeneratingRecurringRef.current = false;
           });
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [isLoading, income.length, user, addIncome]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading]); // Only depend on isLoading, not income.length or user
 
   // Reset the ref when data is reloaded
   useEffect(() => {
