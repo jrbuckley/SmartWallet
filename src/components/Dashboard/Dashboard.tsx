@@ -52,40 +52,53 @@ export default function Dashboard() {
 
       <div className="dashboard-sections">
         <div className="dashboard-section">
-          <h2>Recent Income (Last 30 Days)</h2>
-          {summary.recentIncome.length === 0 ? (
-            <p className="empty-message">No income recorded in the last 30 days.</p>
-          ) : (
-            <div className="recent-income">
-              {summary.recentIncome.map(incomeItem => (
-                <div key={incomeItem.id} className="recent-income-item">
-                  <div className="recent-income-info">
-                    <h4>{incomeItem.name}</h4>
-                    <p>{format(incomeItem.date, 'MMM dd, yyyy')}</p>
-                  </div>
-                  <p className="recent-income-amount">${incomeItem.amount.toFixed(2)}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="dashboard-section">
           <h2>Upcoming Expenses (Next 30 Days)</h2>
           {summary.upcomingExpenses.length === 0 ? (
             <p className="empty-message">No upcoming expenses in the next 30 days.</p>
           ) : (
-            <div className="upcoming-expenses">
-              {summary.upcomingExpenses.slice(0, 5).map(expense => (
-                <div key={expense.id} className="upcoming-expense-item">
-                  <div className="upcoming-expense-info">
-                    <h4>{expense.name}</h4>
-                    <p>{format(expense.dueDate, 'MMM dd, yyyy')}</p>
+            <>
+              <div className="upcoming-expenses">
+                {summary.upcomingExpenses.slice(0, 5).map(expense => (
+                  <div key={expense.id} className="upcoming-expense-item">
+                    <div className="upcoming-expense-info">
+                      <h4>{expense.name}</h4>
+                      <p>{format(expense.dueDate, 'MMM dd, yyyy')}</p>
+                    </div>
+                    <p className="upcoming-expense-amount">${expense.amount.toFixed(2)}</p>
                   </div>
-                  <p className="upcoming-expense-amount">${expense.amount.toFixed(2)}</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              {summary.upcomingExpenses.length > 5 && (
+                <p className="more-items">+ {summary.upcomingExpenses.length - 5} more expenses</p>
+              )}
+              <div className="section-total">
+                <strong>Total: ${summary.upcomingExpenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2)}</strong>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="dashboard-section">
+          <h2>Recent Income (Last 30 Days)</h2>
+          {summary.recentIncome.length === 0 ? (
+            <p className="empty-message">No income recorded in the last 30 days.</p>
+          ) : (
+            <>
+              <div className="recent-income">
+                {summary.recentIncome.map(incomeItem => (
+                  <div key={incomeItem.id} className="recent-income-item">
+                    <div className="recent-income-info">
+                      <h4>{incomeItem.name}</h4>
+                      <p>{format(incomeItem.date, 'MMM dd, yyyy')}</p>
+                    </div>
+                    <p className="recent-income-amount">${incomeItem.amount.toFixed(2)}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="section-total">
+                <strong>Total: ${summary.recentIncome.reduce((sum, i) => sum + i.amount, 0).toFixed(2)}</strong>
+              </div>
+            </>
           )}
         </div>
 
@@ -97,9 +110,21 @@ export default function Dashboard() {
             <div className="savings-preview">
               {summary.savingsOpportunities.slice(0, 3).map(opportunity => (
                 <div key={opportunity.id} className="savings-preview-item">
-                  <h4>{opportunity.title}</h4>
+                  <div className="savings-preview-header">
+                    <h4>{opportunity.title}</h4>
+                    <span 
+                      className="priority-badge-small"
+                      style={{
+                        backgroundColor: opportunity.priority === 'high' ? '#ef4444' :
+                                        opportunity.priority === 'medium' ? '#f59e0b' : '#10b981'
+                      }}
+                    >
+                      {opportunity.priority}
+                    </span>
+                  </div>
+                  <p className="savings-description">{opportunity.description}</p>
                   {opportunity.potentialSavings > 0 && (
-                    <p className="savings-amount">Potential: ${opportunity.potentialSavings.toFixed(2)}</p>
+                    <p className="savings-amount">Potential Savings: ${opportunity.potentialSavings.toFixed(2)}/month</p>
                   )}
                 </div>
               ))}

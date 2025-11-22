@@ -10,7 +10,7 @@ interface ExpenseFormProps {
 }
 
 export default function ExpenseForm({ expense, onClose }: ExpenseFormProps) {
-  const { addExpense, updateExpense } = useFinancial();
+  const { addExpense, updateExpense, budgets } = useFinancial();
   const [formData, setFormData] = useState({
     name: '',
     category: 'bill' as ExpenseCategory,
@@ -18,6 +18,7 @@ export default function ExpenseForm({ expense, onClose }: ExpenseFormProps) {
     dueDate: '',
     isRecurring: false,
     recurringFrequency: 'monthly' as 'monthly' | 'weekly' | 'biweekly' | 'semimonthly' | 'yearly',
+    budgetId: '',
     notes: '',
   });
 
@@ -30,6 +31,7 @@ export default function ExpenseForm({ expense, onClose }: ExpenseFormProps) {
         dueDate: expense.dueDate.toISOString().split('T')[0],
         isRecurring: expense.isRecurring,
         recurringFrequency: expense.recurringFrequency || 'monthly',
+        budgetId: expense.budgetId || '',
         notes: expense.notes || '',
       });
     }
@@ -54,6 +56,7 @@ export default function ExpenseForm({ expense, onClose }: ExpenseFormProps) {
         dueDate: new Date(formData.dueDate),
         isRecurring: formData.isRecurring,
         recurringFrequency: formData.isRecurring ? formData.recurringFrequency : undefined,
+        budgetId: formData.budgetId || undefined,
         notes: formData.notes || undefined,
         isPaid: false,
       };
@@ -167,6 +170,25 @@ export default function ExpenseForm({ expense, onClose }: ExpenseFormProps) {
               </select>
             </div>
           )}
+
+          <div className="form-group">
+            <label htmlFor="budgetId">Link to Budget (Optional)</label>
+            <select
+              id="budgetId"
+              value={formData.budgetId}
+              onChange={(e) => setFormData({ ...formData, budgetId: e.target.value })}
+            >
+              <option value="">None</option>
+              {budgets.map(budget => (
+                <option key={budget.id} value={budget.id}>
+                  {budget.name} (${budget.monthlyLimit.toFixed(2)}/{budget.period})
+                </option>
+              ))}
+            </select>
+            <small style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.25rem', display: 'block' }}>
+              Link this expense to a budget to track spending automatically
+            </small>
+          </div>
 
           <div className="form-group">
             <label htmlFor="notes">Notes</label>

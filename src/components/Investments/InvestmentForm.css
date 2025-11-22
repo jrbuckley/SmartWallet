@@ -23,8 +23,10 @@
   box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 600px;
-  max-height: 90vh;
+  max-height: calc(100vh - 2rem);
+  margin: auto;
   overflow-y: auto;
+  position: relative;
 }
 
 .modal-header {

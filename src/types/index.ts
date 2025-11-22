@@ -19,6 +19,7 @@ export interface Expense {
   recurringFrequency?: 'monthly' | 'weekly' | 'biweekly' | 'semimonthly' | 'yearly';
   isPaid: boolean;
   paidDate?: Date;
+  budgetId?: string; // Optional link to a budget
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -95,6 +96,73 @@ export interface SavingsOpportunity {
   potentialSavings: number;
   priority: 'high' | 'medium' | 'low';
   actionable: boolean;
+}
+
+// Savings goal types
+export type SavingsGoalCategory = 'emergency_fund' | 'vacation' | 'home' | 'car' | 'education' | 'retirement' | 'debt_payoff' | 'other';
+
+export interface SavingsGoal {
+  id: string;
+  userId: string;
+  name: string;
+  category: SavingsGoalCategory;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate?: Date;
+  priority: 'high' | 'medium' | 'low';
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SavingsGoalRecommendation {
+  id: string;
+  category: SavingsGoalCategory;
+  name: string;
+  description: string;
+  recommendedAmount: number;
+  reason: string;
+  priority: 'high' | 'medium' | 'low';
+}
+
+// Budget types
+export type BudgetCategory = 'dining_out' | 'food_delivery' | 'shopping' | 'entertainment' | 'hobbies' | 'subscriptions' | 'personal_care' | 'travel' | 'other';
+
+export interface Budget {
+  id: string;
+  userId: string;
+  name: string;
+  category: BudgetCategory;
+  monthlyLimit: number;
+  period: 'monthly' | 'weekly'; // Budget period
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface BudgetEntry {
+  id: string;
+  userId: string;
+  budgetId: string;
+  amount: number;
+  description: string;
+  date: Date;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface BudgetSpending {
+  budgetId: string;
+  budgetName: string;
+  category: BudgetCategory;
+  monthlyLimit: number;
+  currentSpending: number;
+  remaining: number;
+  percentageUsed: number;
+  isOverBudget: boolean;
+  linkedExpenses: Expense[];
+  manualEntries: BudgetEntry[];
 }
 
 // Financial summary

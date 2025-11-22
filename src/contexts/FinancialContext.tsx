@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import type { Debt, Expense, Income, Investment, User, FinancialSummary } from '../types';
+import type { Debt, Expense, Income, Investment, User, FinancialSummary, SavingsGoal, SavingsGoalRecommendation, Budget, BudgetSpending, BudgetCategory, BudgetEntry } from '../types';
 import { supabase } from '../lib/supabase';
 import { generateRecurringExpenses, generateRecurringIncome } from '../utils/recurringGenerator';
 
@@ -10,6 +10,8 @@ interface FinancialContextType {
   income: Income[];
   debts: Debt[];
   investments: Investment[];
+  savingsGoals: SavingsGoal[];
+  budgets: Budget[];
   isLoading: boolean;
   addExpense: (expense: Omit<Expense, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateExpense: (id: string, updates: Partial<Expense>) => Promise<void>;
@@ -23,6 +25,17 @@ interface FinancialContextType {
   addInvestment: (investment: Omit<Investment, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateInvestment: (id: string, updates: Partial<Investment>) => Promise<void>;
   deleteInvestment: (id: string) => Promise<void>;
+  addSavingsGoal: (goal: Omit<SavingsGoal, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateSavingsGoal: (id: string, updates: Partial<SavingsGoal>) => Promise<void>;
+  deleteSavingsGoal: (id: string) => Promise<void>;
+  getSavingsGoalRecommendations: () => SavingsGoalRecommendation[];
+  addBudget: (budget: Omit<Budget, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateBudget: (id: string, updates: Partial<Budget>) => Promise<void>;
+  deleteBudget: (id: string) => Promise<void>;
+  addBudgetEntry: (entry: Omit<BudgetEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateBudgetEntry: (id: string, updates: Partial<BudgetEntry>) => Promise<void>;
+  deleteBudgetEntry: (id: string) => Promise<void>;
+  getBudgetSpending: () => BudgetSpending[];
   getFinancialSummary: () => FinancialSummary;
   setDataFromFile: (data: { user: User | null; expenses: Expense[]; income: Income[]; debts: Debt[]; investments: Investment[] }) => Promise<void>;
 }
@@ -54,6 +67,7 @@ function expenseToDb(expense: Expense) {
     recurring_frequency: expense.recurringFrequency || null,
     is_paid: expense.isPaid,
     paid_date: expense.paidDate?.toISOString() || null,
+    budget_id: expense.budgetId || null,
     notes: expense.notes || null,
     created_at: expense.createdAt.toISOString(),
     updated_at: expense.updatedAt.toISOString(),
@@ -72,6 +86,7 @@ function expenseFromDb(dbExpense: any): Expense {
     recurringFrequency: dbExpense.recurring_frequency || undefined,
     isPaid: dbExpense.is_paid,
     paidDate: dbExpense.paid_date ? new Date(dbExpense.paid_date) : undefined,
+    budgetId: dbExpense.budget_id || undefined,
     notes: dbExpense.notes || undefined,
     createdAt: new Date(dbExpense.created_at),
     updatedAt: new Date(dbExpense.updated_at),
@@ -184,12 +199,103 @@ function investmentFromDb(dbInvestment: any): Investment {
   };
 }
 
+function savingsGoalToDb(goal: SavingsGoal) {
+  return {
+    id: goal.id,
+    user_id: goal.userId,
+    name: goal.name,
+    category: goal.category,
+    target_amount: goal.targetAmount,
+    current_amount: goal.currentAmount,
+    target_date: goal.targetDate?.toISOString() || null,
+    priority: goal.priority,
+    notes: goal.notes || null,
+    created_at: goal.createdAt.toISOString(),
+    updated_at: goal.updatedAt.toISOString(),
+  };
+}
+
+function savingsGoalFromDb(dbGoal: any): SavingsGoal {
+  return {
+    id: dbGoal.id,
+    userId: dbGoal.user_id,
+    name: dbGoal.name,
+    category: dbGoal.category,
+    targetAmount: dbGoal.target_amount,
+    currentAmount: dbGoal.current_amount,
+    targetDate: dbGoal.target_date ? new Date(dbGoal.target_date) : undefined,
+    priority: dbGoal.priority,
+    notes: dbGoal.notes || undefined,
+    createdAt: new Date(dbGoal.created_at),
+    updatedAt: new Date(dbGoal.updated_at),
+  };
+}
+
+function budgetToDb(budget: Budget) {
+  return {
+    id: budget.id,
+    user_id: budget.userId,
+    name: budget.name,
+    category: budget.category,
+    monthly_limit: budget.monthlyLimit,
+    period: budget.period,
+    notes: budget.notes || null,
+    created_at: budget.createdAt.toISOString(),
+    updated_at: budget.updatedAt.toISOString(),
+  };
+}
+
+function budgetFromDb(dbBudget: any): Budget {
+  return {
+    id: dbBudget.id,
+    userId: dbBudget.user_id,
+    name: dbBudget.name,
+    category: dbBudget.category,
+    monthlyLimit: dbBudget.monthly_limit,
+    period: dbBudget.period,
+    notes: dbBudget.notes || undefined,
+    createdAt: new Date(dbBudget.created_at),
+    updatedAt: new Date(dbBudget.updated_at),
+  };
+}
+
+function budgetEntryToDb(entry: BudgetEntry) {
+  return {
+    id: entry.id,
+    user_id: entry.userId,
+    budget_id: entry.budgetId,
+    amount: entry.amount,
+    description: entry.description,
+    date: entry.date.toISOString(),
+    notes: entry.notes || null,
+    created_at: entry.createdAt.toISOString(),
+    updated_at: entry.updatedAt.toISOString(),
+  };
+}
+
+function budgetEntryFromDb(dbEntry: any): BudgetEntry {
+  return {
+    id: dbEntry.id,
+    userId: dbEntry.user_id,
+    budgetId: dbEntry.budget_id,
+    amount: dbEntry.amount,
+    description: dbEntry.description,
+    date: new Date(dbEntry.date),
+    notes: dbEntry.notes || undefined,
+    createdAt: new Date(dbEntry.created_at),
+    updatedAt: new Date(dbEntry.updated_at),
+  };
+}
+
 export function FinancialProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [income, setIncome] = useState<Income[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [investments, setInvestments] = useState<Investment[]>([]);
+  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [budgetEntries, setBudgetEntries] = useState<BudgetEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const recurringGeneratedRef = useRef(false);
   const isGeneratingRecurringRef = useRef(false);
@@ -299,6 +405,45 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
       } else {
         setInvestments(investmentsData?.map(investmentFromDb) || []);
       }
+
+      // Load savings goals
+      const { data: savingsGoalsData, error: savingsGoalsError } = await supabase
+        .from('savings_goals')
+        .select('*')
+        .eq('user_id', DEFAULT_USER_ID)
+        .order('created_at', { ascending: false });
+
+      if (savingsGoalsError) {
+        console.error('Error loading savings goals:', savingsGoalsError);
+      } else {
+        setSavingsGoals(savingsGoalsData?.map(savingsGoalFromDb) || []);
+      }
+
+      // Load budgets
+      const { data: budgetsData, error: budgetsError } = await supabase
+        .from('budgets')
+        .select('*')
+        .eq('user_id', DEFAULT_USER_ID)
+        .order('created_at', { ascending: false });
+
+      if (budgetsError) {
+        console.error('Error loading budgets:', budgetsError);
+      } else {
+        setBudgets(budgetsData?.map(budgetFromDb) || []);
+      }
+
+      // Load budget entries
+      const { data: budgetEntriesData, error: budgetEntriesError } = await supabase
+        .from('budget_entries')
+        .select('*')
+        .eq('user_id', DEFAULT_USER_ID)
+        .order('created_at', { ascending: false });
+
+      if (budgetEntriesError) {
+        console.error('Error loading budget entries:', budgetEntriesError);
+      } else {
+        setBudgetEntries(budgetEntriesData?.map(budgetEntryFromDb) || []);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -355,6 +500,7 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
       recurring_frequency: dbExpense.recurring_frequency,
       is_paid: dbExpense.is_paid,
       paid_date: dbExpense.paid_date,
+      budget_id: dbExpense.budget_id,
       notes: dbExpense.notes,
       updated_at: dbExpense.updated_at,
     };
@@ -683,6 +829,295 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
     setInvestments(prev => prev.filter(i => i.id !== id));
   };
 
+  const addSavingsGoal = async (goalData: Omit<SavingsGoal, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+    if (!user) return;
+
+    const now = new Date();
+    const newGoal: SavingsGoal = {
+      ...goalData,
+      id: crypto.randomUUID(),
+      userId: user.id,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const dbGoal = savingsGoalToDb(newGoal);
+    const { data, error } = await (supabase
+      .from('savings_goals') as any)
+      .insert(dbGoal)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding savings goal:', error);
+      throw error;
+    }
+
+    if (data) {
+      setSavingsGoals(prev => [savingsGoalFromDb(data), ...prev]);
+    }
+  };
+
+  const updateSavingsGoal = async (id: string, updates: Partial<SavingsGoal>) => {
+    const goal = savingsGoals.find(g => g.id === id);
+    if (!goal) return;
+
+    const updatedGoal = {
+      ...goal,
+      ...updates,
+      updatedAt: new Date(),
+    };
+
+    const dbGoal = savingsGoalToDb(updatedGoal);
+    const updateData: any = {
+      name: dbGoal.name,
+      category: dbGoal.category,
+      target_amount: dbGoal.target_amount,
+      current_amount: dbGoal.current_amount,
+      target_date: dbGoal.target_date,
+      priority: dbGoal.priority,
+      notes: dbGoal.notes,
+      updated_at: dbGoal.updated_at,
+    };
+    const { data, error } = await (supabase
+      .from('savings_goals') as any)
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating savings goal:', error);
+      throw error;
+    }
+
+    if (data) {
+      setSavingsGoals(prev => prev.map(g => g.id === id ? savingsGoalFromDb(data) : g));
+    }
+  };
+
+  const deleteSavingsGoal = async (id: string) => {
+    const { error } = await supabase
+      .from('savings_goals')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting savings goal:', error);
+      throw error;
+    }
+
+    setSavingsGoals(prev => prev.filter(g => g.id !== id));
+  };
+
+  const addBudget = async (budgetData: Omit<Budget, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+    if (!user) return;
+
+    const now = new Date();
+    const newBudget: Budget = {
+      ...budgetData,
+      id: crypto.randomUUID(),
+      userId: user.id,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const dbBudget = budgetToDb(newBudget);
+    const { data, error } = await (supabase
+      .from('budgets') as any)
+      .insert(dbBudget)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding budget:', error);
+      throw error;
+    }
+
+    if (data) {
+      setBudgets(prev => [budgetFromDb(data), ...prev]);
+    }
+  };
+
+  const updateBudget = async (id: string, updates: Partial<Budget>) => {
+    const budget = budgets.find(b => b.id === id);
+    if (!budget) return;
+
+    const updatedBudget = {
+      ...budget,
+      ...updates,
+      updatedAt: new Date(),
+    };
+
+    const dbBudget = budgetToDb(updatedBudget);
+    const updateData: any = {
+      name: dbBudget.name,
+      category: dbBudget.category,
+      monthly_limit: dbBudget.monthly_limit,
+      period: dbBudget.period,
+      notes: dbBudget.notes,
+      updated_at: dbBudget.updated_at,
+    };
+    const { data, error } = await (supabase
+      .from('budgets') as any)
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating budget:', error);
+      throw error;
+    }
+
+    if (data) {
+      setBudgets(prev => prev.map(b => b.id === id ? budgetFromDb(data) : b));
+    }
+  };
+
+  const deleteBudget = async (id: string) => {
+    const { error } = await supabase
+      .from('budgets')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting budget:', error);
+      throw error;
+    }
+
+    setBudgets(prev => prev.filter(b => b.id !== id));
+    // Also delete associated budget entries
+    setBudgetEntries(prev => prev.filter(e => e.budgetId !== id));
+  };
+
+  const addBudgetEntry = async (entryData: Omit<BudgetEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+    if (!user) return;
+
+    const now = new Date();
+    const newEntry: BudgetEntry = {
+      ...entryData,
+      id: crypto.randomUUID(),
+      userId: user.id,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const dbEntry = budgetEntryToDb(newEntry);
+    const { data, error } = await (supabase
+      .from('budget_entries') as any)
+      .insert(dbEntry)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding budget entry:', error);
+      throw error;
+    }
+
+    if (data) {
+      setBudgetEntries(prev => [budgetEntryFromDb(data), ...prev]);
+    }
+  };
+
+  const updateBudgetEntry = async (id: string, updates: Partial<BudgetEntry>) => {
+    const entry = budgetEntries.find(e => e.id === id);
+    if (!entry) return;
+
+    const updatedEntry = {
+      ...entry,
+      ...updates,
+      updatedAt: new Date(),
+    };
+
+    const dbEntry = budgetEntryToDb(updatedEntry);
+    const updateData: any = {
+      budget_id: dbEntry.budget_id,
+      amount: dbEntry.amount,
+      description: dbEntry.description,
+      date: dbEntry.date,
+      notes: dbEntry.notes,
+      updated_at: dbEntry.updated_at,
+    };
+    const { data, error } = await (supabase
+      .from('budget_entries') as any)
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating budget entry:', error);
+      throw error;
+    }
+
+    if (data) {
+      setBudgetEntries(prev => prev.map(e => e.id === id ? budgetEntryFromDb(data) : e));
+    }
+  };
+
+  const deleteBudgetEntry = async (id: string) => {
+    const { error } = await supabase
+      .from('budget_entries')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting budget entry:', error);
+      throw error;
+    }
+
+    setBudgetEntries(prev => prev.filter(e => e.id !== id));
+  };
+
+  const getBudgetSpending = (): BudgetSpending[] => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
+
+    return budgets.map(budget => {
+      // Calculate spending for the current period
+      const periodStart = budget.period === 'weekly' ? startOfWeek : startOfMonth;
+      
+      // Get expenses explicitly linked to this budget
+      const linkedExpenses = expenses.filter(expense => {
+        if (!expense.budgetId || expense.budgetId !== budget.id) return false;
+        const expenseDate = expense.dueDate;
+        return expenseDate >= periodStart;
+      });
+
+      // Get manual budget entries for this budget in the current period
+      const manualEntries = budgetEntries.filter(entry => {
+        if (entry.budgetId !== budget.id) return false;
+        const entryDate = entry.date;
+        return entryDate >= periodStart;
+      });
+
+      // Calculate total spending from both sources
+      const expenseSpending = linkedExpenses.reduce((sum, e) => sum + e.amount, 0);
+      const entrySpending = manualEntries.reduce((sum, e) => sum + e.amount, 0);
+      const currentSpending = expenseSpending + entrySpending;
+      
+      const remaining = budget.monthlyLimit - currentSpending;
+      const percentageUsed = budget.monthlyLimit > 0 ? (currentSpending / budget.monthlyLimit) * 100 : 0;
+      const isOverBudget = currentSpending > budget.monthlyLimit;
+
+      return {
+        budgetId: budget.id,
+        budgetName: budget.name,
+        category: budget.category,
+        monthlyLimit: budget.monthlyLimit,
+        currentSpending,
+        remaining,
+        percentageUsed,
+        isOverBudget,
+        linkedExpenses,
+        manualEntries,
+      };
+    });
+  };
+
   const setDataFromFile = async (data: { user: User | null; expenses: Expense[]; income: Income[]; debts: Debt[]; investments: Investment[] }) => {
     if (!data.user) return;
 
@@ -770,6 +1205,25 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Helper function to convert recurring amount to monthly equivalent
+  const convertToMonthly = (amount: number, frequency?: string): number => {
+    if (!frequency) return 0;
+    switch (frequency) {
+      case 'weekly':
+        return amount * 4.33; // Average weeks per month
+      case 'biweekly':
+        return amount * 2.17; // Bi-weekly payments per month
+      case 'semimonthly':
+        return amount * 2; // Twice per month
+      case 'monthly':
+        return amount;
+      case 'yearly':
+        return amount / 12;
+      default:
+        return 0;
+    }
+  };
+
   const getFinancialSummary = (): FinancialSummary => {
     const now = new Date();
 
@@ -780,15 +1234,36 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
     // Calculate total income
     const totalIncome = income.reduce((sum, i) => sum + i.amount, 0);
 
-    // Calculate monthly recurring income
-    const monthlyRecurringIncome = income
-      .filter(i => i.isRecurring && i.recurringFrequency === 'monthly')
-      .reduce((sum, i) => sum + i.amount, 0);
+    // Calculate monthly recurring income (convert all frequencies to monthly)
+    // Group by name, category, and frequency to avoid double-counting (since we generate multiple instances)
+    const uniqueRecurringIncome = new Map<string, Income>();
+    income
+      .filter(i => i.isRecurring && i.recurringFrequency)
+      .forEach(i => {
+        const key = `${i.name}|${i.category}|${i.recurringFrequency}`;
+        if (!uniqueRecurringIncome.has(key)) {
+          uniqueRecurringIncome.set(key, i);
+        }
+      });
+    
+    const monthlyRecurringIncome = Array.from(uniqueRecurringIncome.values())
+      .reduce((sum, i) => sum + convertToMonthly(i.amount, i.recurringFrequency), 0);
 
-    // Calculate monthly recurring expenses
-    const monthlyRecurringExpenses = expenses
-      .filter(e => e.isRecurring && e.recurringFrequency === 'monthly' && !e.isPaid)
-      .reduce((sum, e) => sum + e.amount, 0);
+    // Calculate monthly recurring expenses (convert all frequencies to monthly)
+    // Include all recurring expenses regardless of payment status - they represent ongoing obligations
+    // Group by name, category, and frequency to avoid double-counting (since we generate multiple instances)
+    const uniqueRecurringExpenses = new Map<string, Expense>();
+    expenses
+      .filter(e => e.isRecurring && e.recurringFrequency)
+      .forEach(e => {
+        const key = `${e.name}|${e.category}|${e.recurringFrequency}`;
+        if (!uniqueRecurringExpenses.has(key)) {
+          uniqueRecurringExpenses.set(key, e);
+        }
+      });
+    
+    const monthlyRecurringExpenses = Array.from(uniqueRecurringExpenses.values())
+      .reduce((sum, e) => sum + convertToMonthly(e.amount, e.recurringFrequency), 0);
 
     // Calculate net cash flow
     const netCashFlow = monthlyRecurringIncome - monthlyRecurringExpenses;
@@ -885,6 +1360,85 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
     }
   }, [isLoading]);
 
+  const getSavingsGoalRecommendations = (): SavingsGoalRecommendation[] => {
+    const recommendations: SavingsGoalRecommendation[] = [];
+    const summary = getFinancialSummary();
+    const existingCategories = new Set(savingsGoals.map(g => g.category));
+
+    // Emergency fund recommendation
+    if (!existingCategories.has('emergency_fund')) {
+      const monthlyExpenses = summary.monthlyRecurringExpenses || summary.totalExpenses / 12;
+      const recommendedAmount = monthlyExpenses * 6; // 6 months of expenses
+      recommendations.push({
+        id: 'rec-emergency-fund',
+        category: 'emergency_fund',
+        name: 'Emergency Fund',
+        description: 'Build a safety net to cover unexpected expenses',
+        recommendedAmount: Math.round(recommendedAmount),
+        reason: `Based on your monthly expenses of $${monthlyExpenses.toFixed(2)}, aim for $${recommendedAmount.toFixed(2)} (6 months of expenses)`,
+        priority: 'high',
+      });
+    }
+
+    // Debt payoff recommendation
+    if (summary.totalDebt > 0 && !existingCategories.has('debt_payoff')) {
+      recommendations.push({
+        id: 'rec-debt-payoff',
+        category: 'debt_payoff',
+        name: 'Debt Payoff Fund',
+        description: 'Accelerate your debt repayment',
+        recommendedAmount: Math.round(summary.totalDebt * 0.1),
+        reason: `You have $${summary.totalDebt.toFixed(2)} in debt. Consider saving 10% as an initial goal`,
+        priority: 'high',
+      });
+    }
+
+    // Retirement recommendation
+    if (!existingCategories.has('retirement')) {
+      const monthlyIncome = summary.monthlyRecurringIncome || summary.totalIncome / 12;
+      const recommendedAmount = monthlyIncome * 12 * 0.15; // 15% of annual income
+      recommendations.push({
+        id: 'rec-retirement',
+        category: 'retirement',
+        name: 'Retirement Savings',
+        description: 'Start building your retirement nest egg',
+        recommendedAmount: Math.round(recommendedAmount),
+        reason: `Financial experts recommend saving 15% of your annual income for retirement`,
+        priority: 'medium',
+      });
+    }
+
+    // Vacation recommendation
+    if (!existingCategories.has('vacation')) {
+      recommendations.push({
+        id: 'rec-vacation',
+        category: 'vacation',
+        name: 'Vacation Fund',
+        description: 'Plan for your next getaway',
+        recommendedAmount: 2000,
+        reason: 'A typical vacation costs around $2,000. Start saving for your dream trip!',
+        priority: 'low',
+      });
+    }
+
+    // Home down payment recommendation
+    if (!existingCategories.has('home') && summary.monthlyRecurringIncome > 0) {
+      const monthlyIncome = summary.monthlyRecurringIncome;
+      const recommendedAmount = monthlyIncome * 12 * 0.2; // 20% down payment estimate
+      recommendations.push({
+        id: 'rec-home',
+        category: 'home',
+        name: 'Home Down Payment',
+        description: 'Save for your future home',
+        recommendedAmount: Math.round(recommendedAmount),
+        reason: 'Aim for 20% down payment to avoid PMI and get better mortgage rates',
+        priority: 'medium',
+      });
+    }
+
+    return recommendations;
+  };
+
   return (
     <FinancialContext.Provider
       value={{
@@ -893,6 +1447,8 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
         income,
         debts,
         investments,
+        savingsGoals,
+        budgets,
         isLoading,
         addExpense,
         updateExpense,
@@ -906,6 +1462,17 @@ export function FinancialProvider({ children }: { children: ReactNode }) {
         addInvestment,
         updateInvestment,
         deleteInvestment,
+        addSavingsGoal,
+        updateSavingsGoal,
+        deleteSavingsGoal,
+        getSavingsGoalRecommendations,
+        addBudget,
+        updateBudget,
+        deleteBudget,
+        addBudgetEntry,
+        updateBudgetEntry,
+        deleteBudgetEntry,
+        getBudgetSpending,
         getFinancialSummary,
         setDataFromFile,
       }}

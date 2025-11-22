@@ -1,7 +1,7 @@
 .app {
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
 }
 
 .main-content {
@@ -9,11 +9,19 @@
   padding: 2rem;
   max-width: 1400px;
   width: 100%;
-  margin: 0 auto;
+  margin-left: 260px; /* Account for sidebar width */
+  transition: margin-left 0.3s ease;
+}
+
+/* When sidebar is collapsed */
+body.nav-collapsed .main-content {
+  margin-left: 70px;
 }
 
 @media (max-width: 768px) {
   .main-content {
+    margin-left: 0;
     padding: 1rem;
+    padding-top: 4rem; /* Account for mobile menu button */
   }
 }
