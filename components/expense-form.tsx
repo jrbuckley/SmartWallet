@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "next";
+import { useState } from "react";
 import { createExpense } from "@/lib/actions";
 
 export function ExpenseForm() {
@@ -13,7 +13,7 @@ export function ExpenseForm() {
     const result = await createExpense(formData);
     setPending(false);
     if (!result.ok) {
-      setError(result.error);
+      setError(result.error ?? "Something went wrong.");
     }
   }
 
