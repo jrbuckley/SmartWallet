@@ -31,11 +31,12 @@ function daysFromNow(n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+// Fictional sample data only - never real account names or amounts.
 const SEED_EXPENSES: Expense[] = [
   {
     id: "e1",
-    name: "Rent",
-    amount: 1500,
+    name: "Maple Ave rent",
+    amount: 1650,
     category: "Housing",
     type: "bill",
     frequency: "monthly",
@@ -44,8 +45,8 @@ const SEED_EXPENSES: Expense[] = [
   },
   {
     id: "e2",
-    name: "Amex payment",
-    amount: 850,
+    name: "Demo Visa payment",
+    amount: 720,
     category: "Debt",
     type: "card",
     frequency: "monthly",
@@ -54,8 +55,8 @@ const SEED_EXPENSES: Expense[] = [
   },
   {
     id: "e3",
-    name: "Car loan",
-    amount: 433,
+    name: "Demo auto loan",
+    amount: 389,
     category: "Transport",
     type: "loan",
     frequency: "monthly",
@@ -64,8 +65,8 @@ const SEED_EXPENSES: Expense[] = [
   },
   {
     id: "e4",
-    name: "Streaming bundle",
-    amount: 32,
+    name: "Demo streaming bundle",
+    amount: 29,
     category: "Entertainment",
     type: "bill",
     frequency: "monthly",
@@ -74,8 +75,8 @@ const SEED_EXPENSES: Expense[] = [
   },
   {
     id: "e5",
-    name: "Gym",
-    amount: 80,
+    name: "Demo gym membership",
+    amount: 55,
     category: "Health",
     type: "bill",
     frequency: "monthly",
