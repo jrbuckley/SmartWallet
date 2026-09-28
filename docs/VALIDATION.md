@@ -42,3 +42,25 @@ wiring in week 2 (`lib/actions.ts` has the TODO).
 - `npm run build` green with no env vars set
 - All five routes render with correct data above
 - Form validation errors show inline; no console errors
+
+## Latest validation pass (2026-09-28)
+
+Re-ran from a clean checkout of this branch after the corrective commit
+(`45d6ce6`): full Vite leftovers (`src/`, `vite.config.ts`,
+`tsconfig.app.json`, `tsconfig.node.json`) removed, seed finance data
+replaced with obviously fictional samples, `package-lock.json` confirmed
+committed.
+
+- `npm install` — clean
+- `npx tsc --noEmit` — clean, no errors
+- `npm run build` — green; `/`, `/dashboard`, `/expenses`, `/investments`,
+  `/insights`, `/_not-found` all prerender as static
+- Production smoke (`next start`): `/` → 307 to `/dashboard`;
+  `/dashboard`, `/expenses`, `/investments`, `/insights` → 200.
+  Fictional seed entries render on `/expenses`.
+
+## Not covered by this PR
+
+- **No linter is configured** — there is no eslint config and no `lint`
+  script, so nothing here implies lint passed.
+- **No Playwright/E2E suite exists yet** — E2E lands in Phase 2.
