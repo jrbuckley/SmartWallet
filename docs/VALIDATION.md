@@ -64,3 +64,34 @@ committed.
 - **No linter is configured** — there is no eslint config and no `lint`
   script, so nothing here implies lint passed.
 - **No Playwright/E2E suite exists yet** — E2E lands in Phase 2.
+
+## PR #2 — UI/theme port + /settings route parity (branch `ui-theme-port`)
+
+- `app/globals.css`: placeholder light values replaced with the original
+  Vite app's dark palette (`#111827` page bg, `#1f2937` cards, `#374151`
+  borders, `#3b82f6` accent) under the Next.js variable names. Original
+  base styles ported: resets, body font stack + antialiased + line-height,
+  button/input resets, `.btn-primary`/`.btn-secondary`, input focus rings,
+  nav, dashboard cards, tables, pills, form grid.
+- New `/settings` route (parity with the original `/settings`
+  DataManagement page): JSON export of expenses + investments.
+  Import/restore deferred to the Postgres wiring.
+- `components/site-nav`: Settings link added.
+
+Validated from a clean checkout of this branch:
+
+- `npm install` — clean
+- `npx tsc --noEmit` — clean, no errors
+- `npm run build` — green; `/`, `/_not-found`, `/dashboard`, `/expenses`,
+  `/investments`, `/insights`, `/settings` all prerender as static
+- Production smoke (`next start`): `/` → 307 to `/dashboard`;
+  `/dashboard`, `/expenses`, `/investments`, `/insights`, `/settings` → 200.
+  Fictional seed entries render on `/expenses`; nav and the settings
+  export button render. Compiled CSS verified to contain the dark values
+  (`--bg-secondary:#111827`, `--bg-primary:#1f2937`, `--accent:#3b82f6`).
+
+## Not covered by this PR
+
+- **No linter is configured** — there is no eslint config and no `lint`
+  script, so nothing here implies lint passed.
+- **No Playwright/E2E suite exists yet** — E2E lands in Phase 2.
