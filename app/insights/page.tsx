@@ -1,8 +1,11 @@
 import { buildInsights } from "@/lib/insights";
 import { getExpenses, getInvestments } from "@/lib/data";
 
+// DB-backed: render on each request instead of baking build-time data.
+export const dynamic = "force-dynamic";
+
 export default async function InsightsPage() {
-  const insights = buildInsights(getExpenses(), getInvestments());
+  const insights = buildInsights(await getExpenses(), await getInvestments());
 
   return (
     <div>

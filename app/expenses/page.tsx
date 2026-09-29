@@ -1,5 +1,9 @@
 import { getExpenses } from "@/lib/data";
 import { ExpenseForm } from "@/components/expense-form";
+import { ExpenseRowActions } from "@/components/expense-row-actions";
+
+// DB-backed: render on each request instead of baking build-time data.
+export const dynamic = "force-dynamic";
 
 const usd = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -7,7 +11,7 @@ const usd = new Intl.NumberFormat("en-US", {
 });
 
 export default async function ExpensesPage() {
-  const expenses = getExpenses();
+  const expenses = await getExpenses();
 
   return (
     <div>
@@ -30,6 +34,7 @@ export default async function ExpensesPage() {
               <th>Due</th>
               <th>Amount</th>
               <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -45,6 +50,9 @@ export default async function ExpensesPage() {
                   <span className={`pill ${e.paid ? "pill-paid" : "pill-unpaid"}`}>
                     {e.paid ? "Paid" : "Unpaid"}
                   </span>
+                </td>
+                <td>
+                  <ExpenseRowActions id={e.id} paid={e.paid} />
                 </td>
               </tr>
             ))}
