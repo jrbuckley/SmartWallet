@@ -1,13 +1,16 @@
 import { getInvestments, getInvestmentTotals } from "@/lib/data";
 
+// DB-backed: render on each request instead of baking build-time data.
+export const dynamic = "force-dynamic";
+
 const usd = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
 });
 
 export default async function InvestmentsPage() {
-  const investments = getInvestments();
-  const totals = getInvestmentTotals();
+  const investments = await getInvestments();
+  const totals = getInvestmentTotals(investments);
 
   return (
     <div>

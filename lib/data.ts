@@ -1,5 +1,9 @@
-// Domain types, seed data, and pure helpers.
-// Week 2 replaces the seed data with Postgres reads via lib/db.ts.
+// Domain types and data access. Reads hit Postgres via lib/db.ts;
+// aggregates stay pure functions over arrays so they (and lib/insights.ts)
+// remain easily testable.
+import { asc, eq } from "drizzle-orm";
+import { db, DEMO_USER_ID } from "./db";
+import { expenses, investments } from "./schema";
 
 export type ExpenseType = "bill" | "loan" | "card" | "other";
 export type Frequency = "once" | "weekly" | "monthly" | "yearly";
@@ -25,102 +29,39 @@ export interface Investment {
   purchaseDate: string; // ISO date
 }
 
-function daysFromNow(n: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+export async function getExpenses(): Promise<Expense[]> {
+  const rows = await db()
+    .select()
+    .from(expenses)
+    .where(eq(expenses.userId, DEMO_USER_ID))
+    .orderBy(asc(expenses.createdAt));
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    amount: Number(r.amount),
+    category: r.category,
+    type: r.type,
+    frequency: r.frequency as Frequency,
+    dueDate: r.dueDate,
+    paid: r.paid,
+  }));
 }
 
-// Fictional sample data only - never real account names or amounts.
-const SEED_EXPENSES: Expense[] = [
-  {
-    id: "e1",
-    name: "Maple Ave rent",
-    amount: 1650,
-    category: "Housing",
-    type: "bill",
-    frequency: "monthly",
-    dueDate: daysFromNow(4),
-    paid: false,
-  },
-  {
-    id: "e2",
-    name: "Demo Visa payment",
-    amount: 720,
-    category: "Debt",
-    type: "card",
-    frequency: "monthly",
-    dueDate: daysFromNow(9),
-    paid: false,
-  },
-  {
-    id: "e3",
-    name: "Demo auto loan",
-    amount: 389,
-    category: "Transport",
-    type: "loan",
-    frequency: "monthly",
-    dueDate: daysFromNow(12),
-    paid: true,
-  },
-  {
-    id: "e4",
-    name: "Demo streaming bundle",
-    amount: 29,
-    category: "Entertainment",
-    type: "bill",
-    frequency: "monthly",
-    dueDate: daysFromNow(20),
-    paid: false,
-  },
-  {
-    id: "e5",
-    name: "Demo gym membership",
-    amount: 55,
-    category: "Health",
-    type: "bill",
-    frequency: "monthly",
-    dueDate: daysFromNow(25),
-    paid: false,
-  },
-];
-
-const SEED_INVESTMENTS: Investment[] = [
-  {
-    id: "i1",
-    name: "VTI",
-    assetType: "ETF",
-    quantity: 40,
-    purchasePrice: 240,
-    currentPrice: 285.5,
-    purchaseDate: "2024-03-15",
-  },
-  {
-    id: "i2",
-    name: "AAPL",
-    assetType: "Stock",
-    quantity: 25,
-    purchasePrice: 175,
-    currentPrice: 232.8,
-    purchaseDate: "2023-11-02",
-  },
-  {
-    id: "i3",
-    name: "BTC",
-    assetType: "Crypto",
-    quantity: 0.15,
-    purchasePrice: 62000,
-    currentPrice: 97500,
-    purchaseDate: "2024-06-20",
-  },
-];
-
-export function getExpenses(): Expense[] {
-  return SEED_EXPENSES;
-}
-
-export function getInvestments(): Investment[] {
-  return SEED_INVESTMENTS;
+export async function getInvestments(): Promise<Investment[]> {
+  const rows = await db()
+    .select()
+    .from(investments)
+    .where(eq(investments.userId, DEMO_USER_ID))
+    .orderBy(asc(investments.createdAt));
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    assetType: r.assetType,
+    quantity: Number(r.quantity),
+    purchasePrice: Number(r.purchasePrice),
+    currentPrice: Number(r.currentPrice),
+    purchaseDate: r.purchaseDate,
+  }));
 }
 
 export interface DashboardSummary {
@@ -129,9 +70,10 @@ export interface DashboardSummary {
   unpaidCount: number;
 }
 
-export function getDashboardSummary(): DashboardSummary {
-  const expenses = getExpenses();
-  const investments = getInvestments();
+export function getDashboardSummary(
+  expenses: Expense[],
+  investments: Investment[],
+): DashboardSummary {
   return {
     monthlyExpenses: expenses
       .filter((e) => e.frequency === "monthly")
@@ -144,19 +86,21 @@ export function getDashboardSummary(): DashboardSummary {
   };
 }
 
-export function getUpcomingExpenses(days: number): Expense[] {
+export function getUpcomingExpenses(
+  expenses: Expense[],
+  days: number,
+): Expense[] {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() + days);
-  return getExpenses()
+  return expenses
     .filter((e) => e.dueDate !== null && new Date(e.dueDate) <= cutoff)
     .sort((a, b) => (a.dueDate as string).localeCompare(b.dueDate as string));
 }
 
-export function getInvestmentTotals(): {
+export function getInvestmentTotals(investments: Investment[]): {
   totalValue: number;
   totalGainLoss: number;
 } {
-  const investments = getInvestments();
   return {
     totalValue: investments.reduce(
       (sum, i) => sum + i.quantity * i.currentPrice,

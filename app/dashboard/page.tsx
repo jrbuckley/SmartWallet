@@ -1,4 +1,12 @@
-import { getDashboardSummary, getUpcomingExpenses } from "@/lib/data";
+import {
+  getDashboardSummary,
+  getExpenses,
+  getInvestments,
+  getUpcomingExpenses,
+} from "@/lib/data";
+
+// DB-backed: render on each request instead of baking build-time data.
+export const dynamic = "force-dynamic";
 
 const usd = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -6,8 +14,10 @@ const usd = new Intl.NumberFormat("en-US", {
 });
 
 export default async function DashboardPage() {
-  const summary = getDashboardSummary();
-  const upcoming = getUpcomingExpenses(30);
+  const expenses = await getExpenses();
+  const investments = await getInvestments();
+  const summary = getDashboardSummary(expenses, investments);
+  const upcoming = getUpcomingExpenses(expenses, 30);
 
   return (
     <div className="dashboard-container">

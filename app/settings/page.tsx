@@ -1,11 +1,14 @@
 import { getExpenses, getInvestments } from "@/lib/data";
 import { SettingsExport } from "@/components/settings-export";
 
+// DB-backed: render on each request instead of baking build-time data.
+export const dynamic = "force-dynamic";
+
 export default async function SettingsPage() {
   const data = {
     exportedAt: new Date().toISOString(),
-    expenses: getExpenses(),
-    investments: getInvestments(),
+    expenses: await getExpenses(),
+    investments: await getInvestments(),
   };
 
   return (
@@ -16,7 +19,7 @@ export default async function SettingsPage() {
         <h2>Data backup</h2>
         <p style={{ marginBottom: "1rem" }}>
           Download your expenses and investments as a JSON file. Import and
-          restore arrive with the Postgres wiring — export only for now.
+          restore are still to come — export only for now.
         </p>
         <SettingsExport data={data} />
       </div>

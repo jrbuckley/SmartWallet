@@ -1,0 +1,16 @@
+# Local Postgres for development. `docker compose up -d`, then
+# `npm run db:migrate && npm run db:seed`.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: smartwallet
+      POSTGRES_USER: smartwallet
+      POSTGRES_PASSWORD: smartwallet
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

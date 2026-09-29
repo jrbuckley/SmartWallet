@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createExpense } from "@/lib/actions";
 
 export function ExpenseForm() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   async function onSubmit(formData: FormData) {
     setPending(true);
@@ -14,11 +15,13 @@ export function ExpenseForm() {
     setPending(false);
     if (!result.ok) {
       setError(result.error ?? "Something went wrong.");
+    } else {
+      formRef.current?.reset();
     }
   }
 
   return (
-    <form action={onSubmit}>
+    <form action={onSubmit} ref={formRef}>
       <div className="form-grid">
         <div className="field">
           <label htmlFor="name">Name</label>
@@ -57,6 +60,10 @@ export function ExpenseForm() {
             <option value="monthly">Monthly</option>
             <option value="yearly">Yearly</option>
           </select>
+        </div>
+        <div className="field">
+          <label htmlFor="dueDate">Due date</label>
+          <input id="dueDate" name="dueDate" type="date" />
         </div>
         <div>
           <button type="submit" className="primary" disabled={pending}>

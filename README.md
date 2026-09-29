@@ -17,8 +17,8 @@ project.
 ## Phases
 
 - **Phase 1 (weeks 1–4):** App Router rebuild — routes, layouts, server vs
-  client components, SSR/streaming. Postgres schema defined; pages render
-  seed data until the DB is wired (week 2).
+  client components, SSR/streaming. Postgres wired with Drizzle migrations
+  and real reads/writes; single demo user until auth lands.
 - **Phase 2 (weeks 5–8):** Docker, GitHub Actions → ECR → ECS Fargate, RDS
   with migrations in the pipeline, Playwright E2E, Sentry, CloudWatch.
 - **Phase 3 (ongoing):** FastAPI backend service behind the Next.js
@@ -28,20 +28,24 @@ project.
 
 ```bash
 npm install
-npm run dev      # http://localhost:3000
+docker compose up -d   # local Postgres
+npm run db:migrate      # apply drizzle/ migrations
+npm run db:seed         # fictional sample data
+npm run dev            # http://localhost:3000
 ```
 
-Copy `.env.example` to `.env` and set `DATABASE_URL` once Postgres is
-available (week 2).
+Copy `.env.example` to `.env` and set `DATABASE_URL`
+(`<redacted>` for the compose setup above).
 
 ## Project layout
 
 - `app/` — routes: `/dashboard`, `/expenses`, `/investments`, `/insights`
 - `components/` — `site-nav` + `expense-form` are client components;
   everything else renders on the server
-- `lib/data.ts` — domain types, seed data, pure helpers (dashboard
-  aggregates, upcoming expenses)
+- `lib/data.ts` — domain types + async Postgres reads (aggregates stay pure
+  functions over arrays, so `lib/insights.ts` stays testable)
 - `lib/insights.ts` — the savings-insight rules as pure functions
-- `lib/schema.ts` — Drizzle table definitions (wired to Postgres in week 2)
+- `lib/schema.ts` — Drizzle table definitions; migrations in `drizzle/`
 - `lib/db.ts` — lazy Drizzle client (build-safe without `DATABASE_URL`)
-- `lib/actions.ts` — server actions (persistence lands with the DB wiring)
+- `lib/actions.ts` — server actions: create / mark paid / delete expense
+- `scripts/seed.ts` — fictional sample data (`npm run db:seed`)

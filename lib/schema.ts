@@ -9,8 +9,9 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-// Week 2: generate migrations from this schema and run them in CI.
-// userId is a placeholder until auth lands (week 3) and defines the users table.
+// Migrations are generated from this schema with `npm run db:generate`
+// and applied with `npm run db:migrate`.
+// userId is a placeholder until auth lands (PR #4) and defines the users table.
 
 export const expenseTypeEnum = pgEnum("expense_type", [
   "bill",
