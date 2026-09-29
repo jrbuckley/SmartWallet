@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/expenses", label: "Expenses" },
   { href: "/investments", label: "Investments" },
   { href: "/insights", label: "Insights" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export function SiteNav() {
